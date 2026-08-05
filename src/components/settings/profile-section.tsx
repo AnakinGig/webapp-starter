@@ -1,10 +1,23 @@
 "use client"
 
 import { useEffect, useState, type FormEvent } from "react"
+import { useRouter } from "next/navigation"
 import { toast } from "sonner"
+import { TriangleAlertIcon } from "lucide-react"
 
 import { authClient } from "@/server/better-auth/client"
+import { api } from "@/trpc/react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogMedia,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -27,12 +40,19 @@ import { Separator } from "@/components/ui/separator"
 import { formatDate } from "@/lib/format"
 
 export function ProfileSection() {
+  const router = useRouter()
   const { data: session, refetch: refetchSession } = authClient.useSession()
   const user = session?.user
 
   const [name, setName] = useState("")
   const [saving, setSaving] = useState(false)
   const [nameError, setNameError] = useState<string | null>(null)
+
+  // Danger zone state
+  const [deleteOpen, setDeleteOpen] = useState(false)
+  const [confirmEmail, setConfirmEmail] = useState("")
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+  const deleteAccount = api.user.deleteAccount.useMutation()
 
   useEffect(() => {
     if (user) setName(user.name ?? "")
@@ -60,89 +80,199 @@ export function ProfileSection() {
     toast.success("Profile updated.")
   }
 
+  function handleDelete(e: FormEvent) {
+    e.preventDefault()
+    if (!user) return
+
+    // Client-side check first (fast feedback); the server re-validates.
+    // Case-insensitive: emails are stored normalized to lowercase.
+    if (confirmEmail.trim().toLowerCase() !== user.email.toLowerCase()) {
+      setDeleteError("The email you typed doesn't match your account email.")
+      return
+    }
+
+    setDeleteError(null)
+    deleteAccount.mutate(undefined, {
+      onSuccess: () => {
+        void authClient.signOut().then(() => router.push("/"))
+      },
+      onError: (err) => {
+        setDeleteError(err.message)
+      },
+    })
+  }
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Public profile</CardTitle>
-        <CardDescription>
-          This information is displayed across your workspace.
-        </CardDescription>
-      </CardHeader>
-      <form onSubmit={handleSubmit}>
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle>Public profile</CardTitle>
+          <CardDescription>
+            This information is displayed across your workspace.
+          </CardDescription>
+        </CardHeader>
+        <form onSubmit={handleSubmit}>
+          <CardContent className="pb-(--card-spacing)">
+            <FieldGroup>
+              <div className="flex items-center gap-4">
+                <Avatar className="size-14 rounded-lg">
+                  {user?.image ? (
+                    <AvatarImage src={user.image} alt={user.name ?? "User"} />
+                  ) : (
+                    <AvatarFallback className="rounded-lg text-lg">
+                      {initial}
+                    </AvatarFallback>
+                  )}
+                </Avatar>
+                <div className="flex flex-col gap-1">
+                  <span className="text-sm font-medium">
+                    {user?.name ?? "—"}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {user?.email}
+                  </span>
+                </div>
+              </div>
+
+              <Field>
+                <FieldLabel htmlFor="settings-name">Full name</FieldLabel>
+                <Input
+                  id="settings-name"
+                  value={name}
+                  onChange={(e) => {
+                    setName(e.target.value)
+                    setNameError(null)
+                  }}
+                  placeholder="Your name"
+                  autoComplete="name"
+                  aria-invalid={Boolean(nameError)}
+                />
+                {nameError && <FieldError>{nameError}</FieldError>}
+              </Field>
+
+              <Field>
+                <FieldLabel htmlFor="settings-email">Email</FieldLabel>
+                <Input
+                  id="settings-email"
+                  type="email"
+                  value={user?.email ?? ""}
+                  readOnly
+                  tabIndex={-1}
+                />
+                <FieldDescription>
+                  Changing your email isn&apos;t supported yet.
+                </FieldDescription>
+              </Field>
+
+              <Separator />
+
+              <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
+                <div className="flex items-center gap-2">
+                  <span className="text-muted-foreground">Role</span>
+                  <Badge variant={isAdmin ? "default" : "secondary"}>
+                    {user?.role ?? "user"}
+                  </Badge>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-muted-foreground">Member since</span>
+                  <span className="tabular-nums">
+                    {formatDate(user?.createdAt)}
+                  </span>
+                </div>
+              </div>
+            </FieldGroup>
+          </CardContent>
+          <CardFooter className="justify-end border-t border-border">
+            <Button type="submit" disabled={saving || isUnchanged}>
+              {saving ? "Saving…" : "Update profile"}
+            </Button>
+          </CardFooter>
+        </form>
+      </Card>
+
+      <Card className="border-destructive/50">
+        <CardHeader>
+          <CardTitle className="text-destructive">Danger zone</CardTitle>
+          <CardDescription>
+            Irreversible actions that affect your account.
+          </CardDescription>
+        </CardHeader>
         <CardContent className="pb-(--card-spacing)">
-          <FieldGroup>
-            <div className="flex items-center gap-4">
-              <Avatar className="size-14 rounded-lg">
-                {user?.image ? (
-                  <AvatarImage src={user.image} alt={user.name ?? "User"} />
-                ) : (
-                  <AvatarFallback className="rounded-lg text-lg">
-                    {initial}
-                  </AvatarFallback>
-                )}
-              </Avatar>
-              <div className="flex flex-col gap-1">
-                <span className="text-sm font-medium">
-                  {user?.name ?? "—"}
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  {user?.email}
-                </span>
-              </div>
+          <div className="flex flex-col gap-3 rounded-lg border border-destructive/50 p-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+            <div className="min-w-0">
+              <p className="text-sm font-medium">Delete account</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Permanently delete your account, your sessions, and your
+                content. This action cannot be undone.
+              </p>
             </div>
-
-            <Field>
-              <FieldLabel htmlFor="settings-name">Full name</FieldLabel>
-              <Input
-                id="settings-name"
-                value={name}
-                onChange={(e) => {
-                  setName(e.target.value)
-                  setNameError(null)
-                }}
-                placeholder="Your name"
-                autoComplete="name"
-                aria-invalid={Boolean(nameError)}
-              />
-              {nameError && <FieldError>{nameError}</FieldError>}
-            </Field>
-
-            <Field>
-              <FieldLabel htmlFor="settings-email">Email</FieldLabel>
-              <Input
-                id="settings-email"
-                type="email"
-                value={user?.email ?? ""}
-                readOnly
-                tabIndex={-1}
-              />
-              <FieldDescription>
-                Changing your email isn&apos;t supported yet.
-              </FieldDescription>
-            </Field>
-
-            <Separator />
-
-            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
-              <div className="flex items-center gap-2">
-                <span className="text-muted-foreground">Role</span>
-                <Badge variant={isAdmin ? "default" : "secondary"}>
-                  {user?.role ?? "user"}
-                </Badge>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-muted-foreground">Member since</span>
-                <span className="tabular-nums">{formatDate(user?.createdAt)}</span>
-              </div>
-            </div>
-          </FieldGroup>
+            <Button
+              variant="destructive"
+              className="shrink-0"
+              onClick={() => {
+                setDeleteOpen(true)
+                setConfirmEmail("")
+                setDeleteError(null)
+              }}
+            >
+              Delete account
+            </Button>
+          </div>
         </CardContent>
-        <CardFooter className="justify-end border-t border-border">
-          <Button type="submit" disabled={saving || isUnchanged}>
-            {saving ? "Saving…" : "Update profile"}
-          </Button>
-        </CardFooter>
-      </form>
-    </Card>
+      </Card>
+
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent size="default">
+          <AlertDialogHeader>
+            <AlertDialogMedia>
+              <TriangleAlertIcon className="text-destructive" />
+            </AlertDialogMedia>
+            <AlertDialogTitle>Delete your account?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete your account, all active sessions,
+              and any content you&apos;ve created. This action cannot be
+              undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <form onSubmit={handleDelete} noValidate>
+            <Field>
+              <FieldLabel htmlFor="confirm-delete-email">
+                Type <span className="font-medium text-foreground">{user?.email}</span>{" "}
+                to confirm
+              </FieldLabel>
+              <Input
+                id="confirm-delete-email"
+                value={confirmEmail}
+                onChange={(e) => {
+                  setConfirmEmail(e.target.value)
+                  setDeleteError(null)
+                }}
+                placeholder={user?.email}
+                autoComplete="off"
+                autoCapitalize="none"
+                spellCheck={false}
+                aria-invalid={Boolean(deleteError)}
+              />
+              {deleteError && <FieldError>{deleteError}</FieldError>}
+            </Field>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <Button
+                type="submit"
+                variant="destructive"
+                disabled={
+                  deleteAccount.isPending ||
+                  confirmEmail.trim().toLowerCase() !== user?.email.toLowerCase()
+                }
+              >
+                {deleteAccount.isPending
+                  ? "Deleting…"
+                  : "Delete my account"}
+              </Button>
+            </AlertDialogFooter>
+          </form>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   )
 }

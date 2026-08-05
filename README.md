@@ -24,6 +24,7 @@ Built with the [T3 Stack](https://create.t3.gg/): **Next.js 15** (App Router) ·
 
 **Settings (`/settings`, all signed-in users)**
 - GitHub-style sidebar: **Profile** (name, role, member-since) · **Appearance** (light / dark / system) · **Security** (password + sessions)
+- **Danger zone** — self-service account deletion with a type-your-email confirmation dialog; last-admin guard, cascades sessions/accounts/posts
 
 **Foundations**
 - Type-safe end-to-end with **tRPC + Zod + superjson**; server env validation with `@t3-oss/env-nextjs`
@@ -127,7 +128,7 @@ src/
 - [ ] **Privacy Policy** page (`/privacy`) — what data is collected (email, name, IP, session metadata, OAuth profile), why, retention period, and user rights
 - [ ] **Terms of Service** page (`/terms`) — acceptable use, account termination, disclaimers, liability limits
 - [ ] **Cookie consent banner** — required for EU/UK visitors (ePrivacy + GDPR) if you set cookies beyond strictly-necessary ones (e.g. analytics)
-- [ ] **GDPR/CCPA compliance** — "delete my account & data" flow (user self-service), data export, and a documented Data Processing Agreement story for any sub-processors (SingleStore region, GitHub OAuth)
+- [ ] **GDPR/CCPA compliance** — data export is missing (self-service account deletion is already live in Settings → Profile → Danger zone), plus a documented Data Processing Agreement story for any sub-processors (SingleStore region, GitHub OAuth)
 - [ ] **Age gate / minimum age notice** — 13+ (COPPA) or 16+ (GDPR) depending on your audience
 - [ ] **Contact for privacy/legal** — email address or form for privacy requests
 - [ ] **`security.txt`** + responsible-disclosure note for security researchers
@@ -141,7 +142,8 @@ src/
 - [ ] **Two-factor authentication (TOTP)**
 - [ ] **Profile pictures** (upload + storage)
 - [ ] **Audit log** of admin actions (who changed what)
-- [ ] **Delete-account self-service** in Settings (feeds the GDPR todo above)
+- [x] **Delete-account self-service** in Settings → Profile → Danger zone
+- [ ] **Password re-confirmation** for account deletion (stronger than typing your email, e.g. for stolen-session protection)
 - [ ] **Tests** (no test framework installed yet — vitest + React Testing Library is a good fit)
 
 ### Nice-to-haves

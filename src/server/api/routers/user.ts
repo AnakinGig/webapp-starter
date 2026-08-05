@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import {
   account as accountTable,
+  posts as postsTable,
   session as sessionTable,
   user as userTable,
 } from "~/server/db/schema";
@@ -220,6 +221,47 @@ export const userRouter = createTRPCRouter({
       });
     }),
 
+  /**
+   * Self-service account deletion from the settings danger zone. Any logged-in
+   * user can delete their OWN account — the id always comes from the session,
+   * never from client input. Guard: the last admin cannot delete their account
+   * (the app must always keep an admin). Cascades sessions, accounts, and the
+   * user's posts, since SingleStore has no FK cascades.
+   */
+  deleteAccount: protectedProcedure.mutation(async ({ ctx }) => {
+    const userId = ctx.session.user.id;
+
+    await db.transaction(async (tx) => {
+      const [target] = await tx
+        .select()
+        .from(userTable)
+        .where(eq(userTable.id, userId))
+        .limit(1);
+      if (!target) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "User not found." });
+      }
+
+      if (target.role === "admin") {
+        const adminCount = await tx.$count(
+          userTable,
+          eq(userTable.role, "admin"),
+        );
+        if (adminCount <= 1) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message:
+              "You are the last admin and cannot delete your account. Promote another user to admin first.",
+          });
+        }
+      }
+
+      await tx.delete(postsTable).where(eq(postsTable.createdById, userId));
+      await tx.delete(sessionTable).where(eq(sessionTable.userId, userId));
+      await tx.delete(accountTable).where(eq(accountTable.userId, userId));
+      await tx.delete(userTable).where(eq(userTable.id, userId));
+    });
+  }),
+
   /** Delete a user and their sessions/accounts. Admin only. */
   remove: adminProcedure
     .input(z.object({ id: z.string() }))
@@ -256,7 +298,9 @@ export const userRouter = createTRPCRouter({
           }
         }
 
-        // SingleStore has no FK cascades — clean up related rows explicitly.
+        // SingleStore has no FK cascades — clean up related rows explicitly
+        // (posts included, matching the self-service deleteAccount behavior).
+        await tx.delete(postsTable).where(eq(postsTable.createdById, input.id));
         await tx.delete(sessionTable).where(eq(sessionTable.userId, input.id));
         await tx.delete(accountTable).where(eq(accountTable.userId, input.id));
         await tx.delete(userTable).where(eq(userTable.id, input.id));
