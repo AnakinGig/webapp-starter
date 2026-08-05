@@ -65,7 +65,7 @@ export function RegisterForm() {
     setFormError(null)
 
     setLoading(true)
-    const { error } = await authClient.signUp.email({
+    const { data, error } = await authClient.signUp.email({
       name,
       email,
       password,
@@ -81,7 +81,8 @@ export function RegisterForm() {
       return
     }
     // Email/password signups start unverified — show the confirmation step.
-    setCreatedEmail(email)
+    // Prefer the server-normalized email (better-auth lowercases it).
+    setCreatedEmail(data?.user?.email ?? email)
   }
 
   if (createdEmail) {

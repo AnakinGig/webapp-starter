@@ -261,7 +261,14 @@ export const userRouter = createTRPCRouter({
         callbackURL: `${appSettings.url}/settings`,
       },
     });
+
+    // Record the send and sweep stale entries so the map stays bounded.
     verificationCooldown.set(id, Date.now());
+    for (const [key, sentAt] of verificationCooldown) {
+      if (Date.now() - sentAt > VERIFICATION_COOLDOWN_MS) {
+        verificationCooldown.delete(key);
+      }
+    }
   }),
 
   /**

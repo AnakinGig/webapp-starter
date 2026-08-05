@@ -32,6 +32,9 @@ export const auth = betterAuth({
     minPasswordLength: 12,
   },
   emailVerification: {
+    // Sign-ins stay open for unverified accounts by default. To require
+    // verification before signing in, uncomment the next line:
+    // requireEmailVerification: true,
     // Boilerplate: no email provider is bundled, so in dev the verification
     // link is printed to the server console. Swap this hook for a real
     // provider (Resend, SES, Postmark, …) — it's the only place emails are
