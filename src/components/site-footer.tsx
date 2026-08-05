@@ -4,6 +4,8 @@ import { siteConfig } from "@/lib/site"
 import { Logo } from "@/components/logo"
 import { CookieSettingsLink } from "@/components/cookie-settings-link"
 
+const supportHref = `mailto:${siteConfig.supportEmail}`
+
 function FooterColumn({
   title,
   links,
@@ -59,6 +61,12 @@ export function SiteFooter() {
               &copy; {new Date().getFullYear()} {siteConfig.name}. All rights
               reserved.
             </span>
+            <a
+              href={supportHref}
+              className="text-xs text-muted-foreground underline-offset-3 transition-colors hover:text-foreground hover:underline"
+            >
+              Support
+            </a>
             <CookieSettingsLink />
           </p>
           <p className="font-mono uppercase tracking-widest">

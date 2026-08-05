@@ -29,7 +29,8 @@ export const env = createEnv({
    * `NEXT_PUBLIC_`.
    */
   client: {
-    // NEXT_PUBLIC_CLIENTVAR: z.string(),
+    // Canonical app URL for SEO/metadata (fallback in src/lib/app.ts).
+    NEXT_PUBLIC_APP_URL: z.string().url().optional(),
   },
 
   /**
@@ -47,6 +48,7 @@ export const env = createEnv({
     SINGLESTORE_PASSWORD: process.env.SINGLESTORE_PASSWORD,
     SINGLESTORE_DATABASE: process.env.SINGLESTORE_DATABASE,
     SINGLESTORE_SSL: process.env.SINGLESTORE_SSL,
+    NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
     NODE_ENV: process.env.NODE_ENV,
   },
   /**

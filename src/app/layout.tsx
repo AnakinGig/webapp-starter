@@ -13,6 +13,7 @@ const geistMono = Geist_Mono({ subsets: ['latin'], variable: '--font-geist-mono'
 
 export const metadata: Metadata = {
   metadataBase: new URL(appSettings.url),
+  applicationName: appSettings.shortName,
   title: {
     default: `${appSettings.name} — ${appSettings.tagline}`,
     template: `%s — ${appSettings.name}`,

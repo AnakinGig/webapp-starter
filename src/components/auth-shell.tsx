@@ -47,7 +47,7 @@ export function AuthShell({
         />
         <div className="relative flex h-full flex-col justify-between p-10">
           <div className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
-            {siteConfig.name} / ui
+            {siteConfig.name}
           </div>
           <blockquote className="max-w-md">
             <p className="text-xl leading-relaxed text-balance">{siteConfig.tagline}</p>

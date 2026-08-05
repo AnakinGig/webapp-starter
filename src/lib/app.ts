@@ -14,8 +14,11 @@ export const appSettings = {
   description:
     "A polished UI starter with a landing page, auth screens, and a dashboard shell.",
 
-  /** Canonical URL of the deployed app (used for metadata/SEO). */
-  url: "http://localhost:3000",
+  /**
+   * Canonical URL of the deployed app (used for metadata/SEO). Set
+   * NEXT_PUBLIC_APP_URL in your environment to override this default.
+   */
+  url: process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
 
   /* ── Logo ──────────────────────────────────────────────────────────── */
   logo: {
