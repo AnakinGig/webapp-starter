@@ -1,5 +1,5 @@
 /**
- * APP SETTINGS — the single place to configure your app.
+ * APP SETTINGS - the single place to configure your app.
  *
  * Everything on the site (header, footer, auth screens, metadata, legal
  * pages) reads from this file. Edit the values below and the whole app

@@ -94,8 +94,37 @@ function showIp(ip?: string | null) {
 }
 
 export function SecuritySection() {
-  const { data: session } = authClient.useSession()
+  const { data: session, refetch: refetchSession } = authClient.useSession()
   const currentToken = session?.session?.token
+
+  // Email verification state
+  const [verifySent, setVerifySent] = useState(false)
+  const [verifyError, setVerifyError] = useState<string | null>(null)
+  const [cooldown, setCooldown] = useState(0)
+  const sendVerify = api.user.sendVerificationEmail.useMutation()
+
+  useEffect(() => {
+    if (cooldown <= 0) return
+    const timer = setInterval(() => setCooldown((c) => c - 1), 1000)
+    return () => clearInterval(timer)
+  }, [cooldown])
+
+  function handleSendVerification() {
+    if (sendVerify.isPending || cooldown > 0) return
+    setVerifyError(null)
+    setVerifySent(false)
+    sendVerify.mutate(undefined, {
+      onSuccess: () => {
+        setVerifySent(true)
+        setCooldown(60)
+        // The session may not carry the new flag yet — refresh for accuracy.
+        void refetchSession()
+      },
+      onError: (err) => {
+        setVerifyError(err.message)
+      },
+    })
+  }
 
   const [sessions, setSessions] = useState<ClientSession[]>([])
   const [loadingSessions, setLoadingSessions] = useState(true)
@@ -233,8 +262,66 @@ export function SecuritySection() {
     toast.success("Signed out of all other sessions.")
   }
 
+  const isVerified = session?.user?.emailVerified === true
+
   return (
     <div className="flex flex-col gap-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Email verification</CardTitle>
+          <CardDescription>
+            Confirm that you own this email address.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="pb-(--card-spacing)">
+          <div className="flex flex-col gap-3 rounded-lg border border-border p-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <p className="truncate text-sm font-medium">
+                  {session?.user?.email}
+                </p>
+                {isVerified ? (
+                  <Badge>Verified</Badge>
+                ) : (
+                  <Badge variant="secondary">Not verified</Badge>
+                )}
+              </div>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {isVerified
+                  ? "Your email address is confirmed."
+                  : "We'll send a verification link to this address. Links expire after one hour."}
+              </p>
+              {verifySent && !isVerified && (
+                <p className="mt-3 flex items-center gap-1.5 text-sm text-muted-foreground">
+                  <CheckIcon className="size-3.5" />
+                  Verification email sent — check your inbox.
+                </p>
+              )}
+              {verifyError && (
+                <p role="alert" className="mt-3 text-sm text-destructive">
+                  {verifyError}
+                </p>
+              )}
+            </div>
+            {!isVerified && (
+              <Button
+                type="button"
+                variant="outline"
+                className="shrink-0"
+                disabled={sendVerify.isPending || cooldown > 0}
+                onClick={handleSendVerification}
+              >
+                {sendVerify.isPending
+                  ? "Sending…"
+                  : cooldown > 0
+                    ? `Resend in ${cooldown}s`
+                    : "Send verification email"}
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle>Change password</CardTitle>

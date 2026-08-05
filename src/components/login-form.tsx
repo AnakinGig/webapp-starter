@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from "react"
 import { useRouter } from "next/navigation"
-import { TriangleAlertIcon } from "lucide-react"
+import { MailWarningIcon, TriangleAlertIcon } from "lucide-react"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
@@ -26,6 +26,7 @@ export function LoginForm() {
   const [loading, setLoading] = useState(false)
   const [emailError, setEmailError] = useState<string | null>(null)
   const [formError, setFormError] = useState<string | null>(null)
+  const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null)
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
@@ -37,7 +38,7 @@ export function LoginForm() {
     setFormError(null)
 
     setLoading(true)
-    const { error } = await authClient.signIn.email({
+    const { data, error } = await authClient.signIn.email({
       email,
       password,
     })
@@ -46,9 +47,39 @@ export function LoginForm() {
       setFormError(error.message ?? "Invalid email or password.")
       return
     }
-    toast.success("Signed in.")
+    // You're signed in, but an unverified address is worth flagging before
+    // we bounce you to the dashboard.
+    if (data?.user?.emailVerified === false) {
+      setUnverifiedEmail(data.user.email ?? email)
+      return
+    }
     router.push("/dashboard")
     router.refresh()
+  }
+
+  if (unverifiedEmail) {
+    return (
+      <div className="flex flex-col gap-6">
+        <Alert className="border-amber-500/40 *:[svg]:text-amber-500">
+          <MailWarningIcon />
+          <AlertDescription className="leading-relaxed">
+            You&apos;re signed in, but <strong>{unverifiedEmail}</strong> isn&apos;t
+            verified yet. Check your inbox for the link we sent when you signed
+            up, or resend it from Settings → Security.
+          </AlertDescription>
+        </Alert>
+        <Button
+          type="button"
+          className="w-full"
+          onClick={() => {
+            router.push("/dashboard")
+            router.refresh()
+          }}
+        >
+          Continue to dashboard
+        </Button>
+      </div>
+    )
   }
 
   return (

@@ -1,5 +1,5 @@
 export type CookieConsent = {
-  /** Always true — the auth session cookie + this consent cookie are required. */
+  /** Always true - the auth session cookie + this consent cookie are required. */
   essential: boolean
   analytics: boolean
   marketing: boolean
@@ -30,7 +30,7 @@ function parseConsent(value: string | undefined): CookieConsent | null {
       }
     }
   } catch {
-    // Malformed or outdated value — treat as no consent.
+    // Malformed or outdated value - treat as no consent.
   }
   return null
 }

@@ -15,8 +15,17 @@ import {
   createTRPCRouter,
   protectedProcedure,
 } from "~/server/api/trpc";
+import { appSettings } from "~/lib/app";
 
 const PAGE_SIZE = 10;
+
+/**
+ * Anti-spam guard for verification emails. In-memory (per server instance),
+ * so it's a soft limit — on serverless deployments, move this to the DB if
+ * you need a hard one.
+ */
+const verificationCooldown = new Map<string, number>();
+const VERIFICATION_COOLDOWN_MS = 60_000;
 
 /** Normalized (lowercased) email used by better-auth when signing up. */
 const normalizeEmail = (email: string) => email.toLowerCase();
@@ -220,6 +229,40 @@ export const userRouter = createTRPCRouter({
         await tx.update(userTable).set(changes).where(eq(userTable.id, id));
       });
     }),
+
+  /**
+   * Resend the email verification link. Self-service: any logged-in user can
+   * trigger it for their OWN account; the email always comes from the session.
+   * Guard rails: no-op (FORBIDDEN) if already verified, and a 60s cooldown to
+   * limit email spam.
+   */
+  sendVerificationEmail: protectedProcedure.mutation(async ({ ctx }) => {
+    const { id, email, emailVerified } = ctx.session.user;
+    if (emailVerified) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "Your email is already verified.",
+      });
+    }
+
+    const lastSent = verificationCooldown.get(id);
+    if (lastSent && Date.now() - lastSent < VERIFICATION_COOLDOWN_MS) {
+      throw new TRPCError({
+        code: "TOO_MANY_REQUESTS",
+        message:
+          "A verification email was sent recently. Please wait a minute before trying again.",
+      });
+    }
+
+    await auth.api.sendVerificationEmail({
+      headers: ctx.headers,
+      body: {
+        email,
+        callbackURL: `${appSettings.url}/settings`,
+      },
+    });
+    verificationCooldown.set(id, Date.now());
+  }),
 
   /**
    * Self-service data export (GDPR portability) from the settings page. Any

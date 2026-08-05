@@ -1,7 +1,7 @@
 import { appSettings } from "./app"
 
 /**
- * Legal placeholders for the boilerplate — derived from `src/lib/app.ts`,
+ * Legal placeholders for the boilerplate - derived from `src/lib/app.ts`,
  * so update the company/contact values there instead of here. The `/legal/*`
  * pages render these.
  */
