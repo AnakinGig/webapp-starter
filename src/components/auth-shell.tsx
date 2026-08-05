@@ -52,11 +52,11 @@ export function AuthShell({
           <blockquote className="max-w-md">
             <p className="text-xl leading-relaxed text-balance">{siteConfig.tagline}</p>
             <footer className="mt-4 font-mono text-xs text-muted-foreground">
-              A UI-only starter — wire this shell into your own product logic.
+              {siteConfig.description}
             </footer>
           </blockquote>
           <div className="flex flex-wrap gap-2 font-mono text-xs text-muted-foreground">
-            {["Next.js", "React", "Tailwind", "shadcn", "Lucide"].map((t) => (
+            {siteConfig.stack.map((t) => (
               <span key={t} className="rounded-md border border-border bg-background px-2 py-1">
                 {t}
               </span>

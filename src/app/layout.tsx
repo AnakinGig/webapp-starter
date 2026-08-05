@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import '@/styles/globals.css'
 
+import { appSettings } from '@/lib/app'
 import { ThemeProvider } from '@/components/theme-provider'
 import { Toaster } from '@/components/ui/sonner'
 import { CookieConsent } from '@/components/cookie-consent'
@@ -11,17 +12,19 @@ const geistSans = Geist({ subsets: ['latin'], variable: '--font-geist-sans' })
 const geistMono = Geist_Mono({ subsets: ['latin'], variable: '--font-geist-mono' })
 
 export const metadata: Metadata = {
-  title: 'Basis — UI Starter Kit',
-  description:
-    'A polished UI starter with a landing page, auth screens, and a dashboard you can drop into your T3 app.',
-  generator: 'v0.app',
+  metadataBase: new URL(appSettings.url),
+  title: {
+    default: `${appSettings.name} — ${appSettings.tagline}`,
+    template: `%s — ${appSettings.name}`,
+  },
+  description: appSettings.description,
   icons: {
     icon: [
-      { url: '/icon-light-32x32.png', media: '(prefers-color-scheme: light)' },
-      { url: '/icon-dark-32x32.png', media: '(prefers-color-scheme: dark)' },
-      { url: '/icon.svg', type: 'image/svg+xml' },
+      { url: appSettings.logo.iconLight, media: '(prefers-color-scheme: light)' },
+      { url: appSettings.logo.iconDark, media: '(prefers-color-scheme: dark)' },
+      { url: appSettings.logo.iconSvg, type: 'image/svg+xml' },
     ],
-    apple: '/apple-icon.png',
+    apple: appSettings.logo.appleIcon,
   },
 }
 

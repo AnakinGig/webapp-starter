@@ -110,6 +110,20 @@ src/
 
 ---
 
+## ⚙️ App settings
+
+Everything brand-related lives in **one file: `src/lib/app.ts`**. Edit it and the whole app updates — header, footer, auth screens, landing page, favicons, metadata/SEO titles, contact links, and the legal pages. No need to touch individual pages.
+
+| Setting | What it controls |
+|---|---|
+| `name` / `shortName` / `tagline` / `description` | Header, footer, auth screens, landing page, and the browser-tab title (`<Page> — <name>` via the metadata template) |
+| `url` | Canonical URL used for SEO metadata (`metadataBase`) |
+| `logo.image` | Path to a logo in `/public` (`/logo.png`) that replaces the built-in mark everywhere; `null` keeps the default |
+| `logo.iconLight` / `iconDark` / `iconSvg` / `appleIcon` | Favicons |
+| `contactEmail` / `supportEmail` | Contact links, including on the legal pages |
+| `company.legalEntity` / `address` / `jurisdiction` + `legalLastUpdated` | Rendered on `/legal/*` |
+| `stack` / `footerNav` | Landing + auth-screen badges and the footer link columns |
+
 ## 👤 Accounts & roles
 
 - Roles: **`admin`** and **`user`** (column on the `user` table).
