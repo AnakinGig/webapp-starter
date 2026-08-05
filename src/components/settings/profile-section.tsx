@@ -190,7 +190,7 @@ export function ProfileSection() {
         </form>
       </Card>
 
-      <Card className="border-destructive/50">
+      <Card className="mt-6 border-destructive/50">
         <CardHeader>
           <CardTitle className="text-destructive">Danger zone</CardTitle>
           <CardDescription>
@@ -235,7 +235,7 @@ export function ProfileSection() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <form onSubmit={handleDelete} noValidate>
-            <Field>
+            <Field className="pb-4">
               <FieldLabel htmlFor="confirm-delete-email">
                 Type <span className="font-medium text-foreground">{user?.email}</span>{" "}
                 to confirm
