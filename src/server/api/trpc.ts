@@ -80,24 +80,27 @@ export const createCallerFactory = t.createCallerFactory;
 export const createTRPCRouter = t.router;
 
 /**
- * Middleware for timing procedure execution and adding an artificial delay in development.
+ * Middleware for timing procedure execution.
  *
- * You can remove this if you don't like it, but it can help catch unwanted waterfalls by simulating
- * network latency that would occur in production but not in local development.
+ * The T3 template originally added an artificial 100-500ms delay in development
+ * to simulate network latency. That made every call feel slow (an edit cycle
+ * pays the delay once for the mutation and again for each refetch), so it was
+ * removed. We now only log calls that exceed SLOW_MS to keep the dev console
+ * quiet while still surfacing genuinely slow procedures. 1000ms because real
+ * SingleStore round trips on the shared tier routinely sit around 500-700ms.
  */
-const timingMiddleware = t.middleware(async ({ next, path }) => {
-  const start = Date.now();
+const SLOW_MS = 1000;
 
-  if (t._config.isDev) {
-    // artificial delay in dev
-    const waitMs = Math.floor(Math.random() * 400) + 100;
-    await new Promise((resolve) => setTimeout(resolve, waitMs));
-  }
+const timingMiddleware = t.middleware(async ({ next, path, type }) => {
+  const start = Date.now();
 
   const result = await next();
 
   const end = Date.now();
-  console.log(`[TRPC] ${path} took ${end - start}ms to execute`);
+  const elapsed = end - start;
+  if (elapsed > SLOW_MS) {
+    console.warn(`[TRPC] ${type} ${path} took ${elapsed}ms to execute (slow)`);
+  }
 
   return result;
 });
@@ -132,3 +135,19 @@ export const protectedProcedure = t.procedure
       },
     });
   });
+
+/**
+ * Admin (authenticated + role "admin") procedure
+ *
+ * For mutations/queries that only workspace admins should access, e.g. user
+ * management. Guards the user router behind `session.user.role === "admin"`.
+ */
+export const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
+  if (ctx.session.user.role !== "admin") {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Admin access required.",
+    });
+  }
+  return next({ ctx });
+});

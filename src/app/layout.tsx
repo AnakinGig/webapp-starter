@@ -4,6 +4,7 @@ import '@/styles/globals.css'
 
 import { ThemeProvider } from '@/components/theme-provider'
 import { Toaster } from '@/components/ui/sonner'
+import { TRPCReactProvider } from '@/trpc/react'
 
 const geistSans = Geist({ subsets: ['latin'], variable: '--font-geist-sans' })
 const geistMono = Geist_Mono({ subsets: ['latin'], variable: '--font-geist-mono' })
@@ -45,11 +46,11 @@ export default function RootLayout({
       <body className="antialiased font-sans">
         <ThemeProvider
           attribute="class"
-          defaultTheme="dark"
+          defaultTheme="system"
           enableSystem
           disableTransitionOnChange
         >
-          {children}
+          <TRPCReactProvider>{children}</TRPCReactProvider>
           <Toaster position="top-center" />
         </ThemeProvider>
       </body>

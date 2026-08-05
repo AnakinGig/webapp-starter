@@ -10,9 +10,9 @@ export default function DashboardPage() {
         <h1 className="text-2xl font-semibold tracking-tight text-balance">
           Welcome back
         </h1>
-        <p className="text-sm leading-relaxed text-muted-foreground text-pretty">
-          Manage users, roles, and access across your workspace with local UI state.
-        </p>
+      <p className="text-sm leading-relaxed text-muted-foreground text-pretty">
+           Manage users, roles, and access across your workspace.
+         </p>
       </div>
       <UserManagement />
     </div>

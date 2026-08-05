@@ -1,12 +1,11 @@
-export type DashboardUserRole = "admin" | "member"
+export type DashboardUserRole = "admin" | "user"
 
 export type DashboardUser = {
   id: string
-  name: string
+  name: string | null
   email: string
-  role: DashboardUserRole
-  banned: boolean
-  emailVerified: boolean
+  role: string
+  emailVerified: boolean | null
   createdAt: Date | string
 }
 
@@ -14,5 +13,4 @@ export type DashboardUserDraft = {
   name: string
   email: string
   role: DashboardUserRole
-  banned: boolean
 }

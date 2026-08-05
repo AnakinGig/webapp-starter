@@ -71,13 +71,14 @@ export default function Page() {
               drop into another T3 app and wire to your own backend.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <Button size="lg" render={<Link href="/register" />}>
+              <Button size="lg" nativeButton={false} render={<Link href="/register" />}>
                 Get started
                 <ArrowRightIcon data-icon="inline-end" />
               </Button>
               <Button
                 size="lg"
                 variant="outline"
+                nativeButton={false}
                 render={<Link href="/login" />}
               >
                 Sign in
@@ -135,10 +136,10 @@ export default function Page() {
                 Create an account and explore the dashboard in under a minute.
               </p>
             </div>
-            <Button size="lg" render={<Link href="/register" />}>
-              Create your account
-              <ArrowRightIcon data-icon="inline-end" />
-            </Button>
+             <Button size="lg" nativeButton={false} render={<Link href="/register" />}>
+               Create your account
+               <ArrowRightIcon data-icon="inline-end" />
+             </Button>
           </div>
         </section>
       </main>

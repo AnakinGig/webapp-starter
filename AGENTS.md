@@ -1,36 +1,49 @@
 # AGENTS.md
 
-T3 stack app (Next.js 15 App Router + tRPC + Drizzle + Tailwind v4 + shadcn/ui) with **better-auth** replacing NextAuth. No test framework is installed. README.md is stale (still references NextAuth/Prisma) — ignore it.
+T3 stack app (Next.js 15 App Router + tRPC + Drizzle + Tailwind v4 + shadcn/ui) with **better-auth** replacing NextAuth, backed by **SingleStore** (see `docs/singlestore.md`). No test framework is installed. README.md is stale (still references NextAuth/Prisma/SQLite) — ignore it.
 
 ## Commands (pnpm only)
 
 - `pnpm dev` — dev server (`next dev --turbo`)
 - `pnpm check` — `next lint` + `tsc --noEmit`; run this before finishing changes
 - `pnpm typecheck`, `pnpm lint`, `pnpm format:write` / `pnpm format:check`
-- `pnpm db:generate` / `pnpm db:migrate` / `pnpm db:push` / `pnpm db:studio` — drizzle-kit
+- `pnpm db:generate` / `pnpm db:migrate` — drizzle-kit. Do NOT use `db:push` or `db:studio` against SingleStore: their introspection queries MySQL `information_schema.check_constraints`, which SingleStore lacks, and they abort. `db:generate` needs no DB connection; `db:migrate` applies `drizzle/*.sql` in order.
 - No test script exists; do not invent one.
 
 ## Environment (src/env.js)
 
-- `DATABASE_URL` is validated as `z.string().url()` — must be a real URL like `file:./db.sqlite`, NOT the literal `"file"` shown in `.env.example`. The local gitignored `db.sqlite` lives at the repo root.
+- SingleStore connection is configured via `SINGLESTORE_HOST` / `SINGLESTORE_PORT` (coerced number, defaults to 3306) / `SINGLESTORE_USER` / `SINGLESTORE_PASSWORD` (optional) / `SINGLESTORE_DATABASE` / `SINGLESTORE_SSL` (`"true"` | `"false"`, defaults to `"true"`). TLS is required by SingleStore Helios; set `"false"` only for local deployments.
+- `emptyStringAsUndefined: true` means empty strings fail validation — `.env.example` uses non-empty placeholders. `SINGLESTORE_PASSWORD` is optional to allow passwordless local instances.
 - `BETTER_AUTH_GITHUB_CLIENT_ID` / `BETTER_AUTH_GITHUB_CLIENT_SECRET` are required even in dev (dummy values pass); `BETTER_AUTH_SECRET` is only required in production.
 - New env vars must be added to both `src/env.js` (server or client schema + `runtimeEnv`) and `.env.example`.
 - `SKIP_ENV_VALIDATION=1` bypasses validation (useful for Docker builds).
 
 ## Drizzle
 
-- `drizzle.config.ts` sets `tablesFilter: ["webapp-starter_*"]`: drizzle-kit only manages tables whose names start with `webapp-starter_`. New app tables must follow this prefix or `db:generate`/`db:push` will silently ignore them.
-- Better-auth core tables (`user`, `account`, `session`, `verification` in `src/server/db/schema.ts`) deliberately have no prefix and are excluded from drizzle-kit management — do not "fix" their names.
+- SingleStore is MySQL wire-compatible, so everything stays in **mysql** mode: `dialect: "mysql"` in `drizzle.config.ts`, the `mysql2` pool in `src/server/db/index.ts`, and `provider: "mysql"` for better-auth's `drizzleAdapter`. Do not switch to the `singlestore` dialect/driver — better-auth's adapter does not support it.
+- `drizzle.config.ts` uses `tablesFilter: ["webapp-starter_*", "post", "user", "account", "session", "verification"]`, covering the app prefix plus the unprefixed template and better-auth tables. New app tables must use the `webapp-starter_` prefix or be added to the filter explicitly, or `db:generate`/`db:push` will silently ignore them.
+- The pool and `drizzle.config.ts` both derive credentials from `SINGLESTORE_*` env vars; keep them in sync. The pool is cached on `globalThis` outside production to survive HMR.
+- Schema uses `mysql-core` builders (`mysqlTable`, `varchar`, `timestamp`, `boolean`); the old sqlite forms (`integer({ mode: "timestamp" })`, `sql\`(unixepoch())\``) no longer apply. See `docs/singlestore.md`.
+- SingleStore DDL gotchas (see `docs/singlestore.md`): Helios runs in columnstore mode — `CREATE ROWSTORE TABLE` is rejected on the free shared tier, a columnstore table can have only one key (PK or UNIQUE, not both), and FK DDL is unsupported. So the schema must not use `.references()` or `.unique()` (use plain `index()` instead — `user.email`/`session.token` are non-unique indexes), and timestamp defaults must be `sql\`CURRENT_TIMESTAMP\`` without parentheses. `db:generate` output needs no manual edits as long as these rules hold.
 
 ## Auth
 
 - better-auth is mounted at `/api/auth/*` (`src/app/api/auth/[...all]/route.ts`); GitHub OAuth redirect URI is hardcoded to `http://localhost:3000`.
+- The first user ever created is auto-assigned `role: "admin"` via `databaseHooks.user.create.before` in `src/server/better-auth/config.ts`; everyone else defaults to `"user"` (column default on `user.role` in the schema). Registration happens through the same path for email and OAuth signups.
+- The custom `role` column MUST stay declared as `user.additionalFields.role` (`type: "string"`, `defaultValue: "user"`, `input: false`) in the same config. Better-auth only persists and returns model fields it knows about — without the declaration, the first-user hook's `role: "admin"` is silently dropped at insert time and `role` is missing from session/user output (breaking the admin navbar + `/dashboard` guard).
 - Get the session server-side with `getSession()` from `~/server/better-auth/server` (RSC), or via `ctx.session` in tRPC; `protectedProcedure` in `src/server/api/trpc.ts` throws `UNAUTHORIZED` for logged-out users.
 
 ## tRPC
 
 - New routers must be manually registered on `appRouter` in `src/server/api/root.ts`.
 - superjson transformer; zod validation errors are flattened into `shape.data.zodError`.
+- `adminProcedure` in `src/server/api/trpc.ts` requires `session.user.role === "admin"` (throws `FORBIDDEN`). The `user` router is admin-only and carries guard rails: no self-delete / self role change, no last-admin delete/demote, duplicate emails rejected, and delete cascades the target's `session`/`account` rows (no FK support on SingleStore). The one exception is `user.verifyPassword` — a `protectedProcedure` (any logged-in user) that delegates to better-auth's server-scoped verify-password endpoint for blur-time password checks on the settings form.
+
+## Git workflow
+
+- The user wants every feature committed and pushed to GitHub (`origin` at github.com/AnakinGig/webapp-starter) as soon as it's complete. Current working branch: `prepare-db-singlestore`.
+- After a feature is done and `pnpm check` is green: `git add` the relevant files, commit with a concise descriptive message (e.g. `feat(settings): add session management`), then `git push origin <branch>`.
+- Do not commit secrets: `.env` is gitignored; only `.env.example` (placeholders) is committed.
 
 ## Style conventions
 

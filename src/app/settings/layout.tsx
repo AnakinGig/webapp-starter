@@ -4,15 +4,15 @@ import { getSession } from "@/server/better-auth/server"
 import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
 
-export default async function DashboardLayout({
+export default async function SettingsLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
   const session = await getSession()
 
-  if (session?.user.role !== "admin") {
-    redirect("/")
+  if (!session) {
+    redirect("/login")
   }
 
   return (

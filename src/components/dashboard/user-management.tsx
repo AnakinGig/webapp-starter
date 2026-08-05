@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState, type ComponentType } from "react"
+import { useState, useEffect, useMemo, type ComponentType } from "react"
 import {
   MoreHorizontalIcon,
   PencilIcon,
@@ -15,6 +15,9 @@ import { toast } from "sonner"
 
 import { UserDialog } from "@/components/dashboard/user-dialog"
 import type { DashboardUser, DashboardUserDraft } from "@/components/dashboard/types"
+import { formatDate } from "@/lib/format"
+import { api } from "~/trpc/react"
+import { authClient } from "~/server/better-auth/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -57,54 +60,27 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
+  AlertDialogMedia,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination"
 
-const INITIAL_USERS: DashboardUser[] = [
-  {
-    id: "user_1",
-    name: "Ada Lovelace",
-    email: "ada@basis.dev",
-    role: "admin",
-    banned: false,
-    emailVerified: true,
-    createdAt: new Date("2025-01-18"),
-  },
-  {
-    id: "user_2",
-    name: "Grace Hopper",
-    email: "grace@basis.dev",
-    role: "member",
-    banned: false,
-    emailVerified: true,
-    createdAt: new Date("2025-02-06"),
-  },
-  {
-    id: "user_3",
-    name: "Linus Torvalds",
-    email: "linus@basis.dev",
-    role: "member",
-    banned: false,
-    emailVerified: false,
-    createdAt: new Date("2025-03-12"),
-  },
-]
+const PAGE_SIZE = 10
 
-function initials(name: string, email: string) {
+function initials(name: string | null, email: string) {
   const source = name?.trim() ?? email?.split("@")[0] ?? "U"
   return source
     .split(/\s+/)
     .slice(0, 2)
     .map((p) => p[0]?.toUpperCase())
     .join("")
-}
-
-function formatDate(d: Date | string) {
-  return new Date(d).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  })
 }
 
 function StatCard({
@@ -134,72 +110,100 @@ function StatCard({
 }
 
 export function UserManagement() {
-  const [users, setUsers] = useState<DashboardUser[]>(INITIAL_USERS)
-  const [query, setQuery] = useState("")
+  const [page, setPage] = useState(1)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [debouncedQuery, setDebouncedQuery] = useState("")
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<DashboardUser | null>(null)
+  const [dialogError, setDialogError] = useState<string | null>(null)
   const [toDelete, setToDelete] = useState<DashboardUser | null>(null)
 
-  const stats = useMemo(() => {
-    const list = users
-    return {
-      total: list.length,
-      admins: list.filter((u) => u.role === "admin").length,
-      verified: list.filter((u) => u.emailVerified).length,
-    }
-  }, [users])
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedQuery(searchQuery)
+      setPage(1)
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [searchQuery])
 
-  const filtered = useMemo(() => {
-    const list = users
-    const q = query.trim().toLowerCase()
-    if (!q) return list
-    return list.filter(
-      (u) =>
-        u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q),
-    )
-  }, [users, query])
+  const { data, isLoading } = api.user.getMany.useQuery({
+    page,
+    pageSize: PAGE_SIZE,
+    query: debouncedQuery || undefined,
+  })
+
+  const utils = api.useUtils()
+
+  const { data: session } = authClient.useSession()
+  const isSelf = (userId: string) => session?.user.id === userId
+
+  const invalidateUsers = () => {
+    void utils.user.getMany.invalidate()
+    void utils.user.getStats.invalidate()
+  }
+
+  const createUser = api.user.create.useMutation({
+    onSuccess: () => {
+      invalidateUsers()
+      toast.success("User created.")
+      setDialogOpen(false)
+      setEditing(null)
+      setDialogError(null)
+    },
+    // Keep the dialog open and show the error inline under the relevant field.
+    onError: (err) => setDialogError(err.message),
+  })
+
+  const updateUser = api.user.update.useMutation({
+    onSuccess: () => {
+      invalidateUsers()
+      toast.success("User updated.")
+      setDialogOpen(false)
+      setEditing(null)
+      setDialogError(null)
+    },
+    onError: (err) => setDialogError(err.message),
+  })
+
+  const deleteUser = api.user.remove.useMutation({
+    onSuccess: () => {
+      invalidateUsers()
+      toast.success("User removed.")
+      setToDelete(null)
+    },
+    onError: (err) => toast.error(err.message),
+  })
+
+  const users = useMemo(() => data?.data ?? [], [data])
+  const totalPages = data?.totalPages ?? 0
+
+  const { data: stats, isPending: statsLoading } = api.user.getStats.useQuery()
 
   function handleSave(values: DashboardUserDraft, user: DashboardUser | null) {
     if (user) {
-      setUsers((current) =>
-        current.map((entry) =>
-          entry.id === user.id
-            ? {
-                ...entry,
-                ...values,
-              }
-            : entry,
-        ),
-      )
+      updateUser.mutate({ id: user.id, ...values })
       return
     }
-
-    setUsers((current) => [
-      {
-        id: `user_${Date.now()}`,
-        createdAt: new Date(),
-        emailVerified: false,
-        ...values,
-      },
-      ...current,
-    ])
+    createUser.mutate(values)
   }
 
   function openCreate() {
     setEditing(null)
+    setDialogError(null)
     setDialogOpen(true)
   }
   function openEdit(user: DashboardUser) {
     setEditing(user)
+    setDialogError(null)
     setDialogOpen(true)
   }
 
   return (
     <div className="flex flex-col gap-6">
       <div className="grid gap-4 sm:grid-cols-3">
-        <StatCard label="Total users" value={stats.total} icon={UsersIcon} loading={false} />
-        <StatCard label="Admins" value={stats.admins} icon={ShieldCheckIcon} loading={false} />
-        <StatCard label="Verified" value={stats.verified} icon={MailCheckIcon} loading={false} />
+        <StatCard label="Total users" value={stats?.total ?? 0} icon={UsersIcon} loading={statsLoading} />
+        <StatCard label="Admins" value={stats?.admins ?? 0} icon={ShieldCheckIcon} loading={statsLoading} />
+        <StatCard label="Verified" value={stats?.verified ?? 0} icon={MailCheckIcon} loading={statsLoading} />
       </div>
 
       <Card>
@@ -212,8 +216,8 @@ export function UserManagement() {
             <div className="relative">
               <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search users"
                 className="w-full pl-8 sm:w-56"
                 aria-label="Search users"
@@ -226,7 +230,21 @@ export function UserManagement() {
           </div>
         </CardHeader>
         <CardContent className="p-0">
-          {filtered.length === 0 ? (
+          {isLoading ? (
+            <div className="py-12">
+              <div className="flex flex-col gap-3 px-6">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i} className="flex items-center gap-3">
+                    <Skeleton className="size-8 rounded-full" />
+                    <div className="flex-1 space-y-2">
+                      <Skeleton className="h-4 w-32" />
+                      <Skeleton className="h-3 w-48" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : users.length === 0 ? (
             <Empty className="py-12">
               <EmptyHeader>
                 <EmptyMedia variant="icon">
@@ -234,121 +252,185 @@ export function UserManagement() {
                 </EmptyMedia>
                 <EmptyTitle>No users found</EmptyTitle>
                 <EmptyDescription>
-                  {query
+                  {debouncedQuery
                     ? "Try a different search term."
                     : "Get started by adding your first user."}
                 </EmptyDescription>
               </EmptyHeader>
             </Empty>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>User</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Joined</TableHead>
-                  <TableHead className="w-10 text-right">
-                    <span className="sr-only">Actions</span>
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filtered.map((user) => (
-                  <TableRow key={user.id}>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <Avatar className="size-8">
-                          <AvatarFallback className="text-xs">
-                            {initials(user.name, user.email)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex flex-col">
-                          <span className="font-medium leading-tight">{user.name}</span>
-                          <span className="text-xs text-muted-foreground">{user.email}</span>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={user.role === "admin" ? "default" : "secondary"}>
-                        {user.role}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {user.banned ? (
-                        <Badge variant="destructive">Suspended</Badge>
-                      ) : user.emailVerified ? (
-                        <Badge variant="secondary">Active</Badge>
-                      ) : (
-                        <Badge variant="outline">Pending</Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground tabular-nums">
-                      {formatDate(user.createdAt)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger
-                          render={
-                            <Button variant="ghost" size="icon-sm" aria-label={`Actions for ${user.name}`} />
-                          }
-                        >
-                          <MoreHorizontalIcon />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-40">
-                          <DropdownMenuGroup>
-                            <DropdownMenuItem onClick={() => openEdit(user)}>
-                              <PencilIcon />
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              variant="destructive"
-                              onClick={() => setToDelete(user)}
-                            >
-                              <Trash2Icon />
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuGroup>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
+            <>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>User</TableHead>
+                    <TableHead>Role</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Joined</TableHead>
+                    <TableHead className="w-10 text-right">
+                      <span className="sr-only">Actions</span>
+                    </TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {users.map((user) => (
+                    <TableRow key={user.id}>
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <Avatar className="size-8">
+                            <AvatarFallback className="text-xs">
+                              {initials(user.name, user.email)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex flex-col">
+                            <span className="font-medium leading-tight">{user.name ?? user.email}</span>
+                            <span className="text-xs text-muted-foreground">{user.email}</span>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={user.role === "admin" ? "default" : "secondary"}>
+                          {user.role}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {user.emailVerified ? (
+                          <Badge variant="secondary">Active</Badge>
+                        ) : (
+                          <Badge variant="outline">Pending</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground tabular-nums">
+                        {formatDate(user.createdAt)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger
+                            render={
+                              <Button variant="ghost" size="icon-sm" aria-label={`Actions for ${user.name ?? user.email}`} />
+                            }
+                          >
+                            <MoreHorizontalIcon />
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-40">
+                            <DropdownMenuGroup>
+                              <DropdownMenuItem onClick={() => openEdit(user)}>
+                                <PencilIcon />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                variant="destructive"
+                                disabled={isSelf(user.id)}
+                                title={
+                                  isSelf(user.id)
+                                    ? "You cannot delete your own account"
+                                    : undefined
+                                }
+                                onClick={() => setToDelete(user)}
+                              >
+                                <Trash2Icon />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuGroup>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              {totalPages > 1 && (
+                <div className="border-t border-border px-4 py-3">
+                  <Pagination>
+                    <PaginationContent>
+                      <PaginationItem>
+                        <PaginationPrevious
+                          href="#"
+                          onClick={(e) => {
+                            e.preventDefault()
+                            setPage((p) => Math.max(1, p - 1))
+                          }}
+                          aria-disabled={page === 1}
+                        />
+                      </PaginationItem>
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                        <PaginationItem key={p}>
+                          <PaginationLink
+                            href="#"
+                            isActive={p === page}
+                            onClick={(e) => {
+                              e.preventDefault()
+                              setPage(p)
+                            }}
+                          >
+                            {p}
+                          </PaginationLink>
+                        </PaginationItem>
+                      ))}
+                      <PaginationItem>
+                        <PaginationNext
+                          href="#"
+                          onClick={(e) => {
+                            e.preventDefault()
+                            setPage((p) => Math.min(totalPages, p + 1))
+                          }}
+                          aria-disabled={page === totalPages}
+                        />
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
+                </div>
+              )}
+            </>
           )}
         </CardContent>
       </Card>
 
       <UserDialog
         open={dialogOpen}
-        onOpenChange={setDialogOpen}
+        onOpenChange={(o) => {
+          setDialogOpen(o)
+          if (!o) setDialogError(null)
+        }}
         user={editing}
         onSave={handleSave}
+        disabledRole={Boolean(editing && isSelf(editing.id))}
+        error={dialogError}
+        onClearError={() => setDialogError(null)}
+        pending={createUser.isPending || updateUser.isPending}
       />
 
-      <AlertDialog open={Boolean(toDelete)} onOpenChange={(o) => !o && setToDelete(null)}>
+      <AlertDialog
+        open={Boolean(toDelete)}
+        onOpenChange={(o) => !o && !deleteUser.isPending && setToDelete(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
+            <AlertDialogMedia className="bg-destructive/10 text-destructive">
+              <Trash2Icon />
+            </AlertDialogMedia>
             <AlertDialogTitle>Delete user?</AlertDialogTitle>
             <AlertDialogDescription>
               This will permanently remove{" "}
-              <span className="font-medium text-foreground">{toDelete?.name}</span> from your
-              workspace. This action cannot be undone.
+              <span className="font-medium text-foreground">
+                {toDelete?.name ?? toDelete?.email}
+              </span>{" "}
+              from your workspace, along with their sessions and linked
+              accounts. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleteUser.isPending}>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={(e) => {
-                e.preventDefault()
+              variant="destructive"
+              className="bg-destructive text-white hover:bg-destructive/90"
+              disabled={deleteUser.isPending}
+              onClick={() => {
                 if (!toDelete) return
-                setUsers((current) => current.filter((entry) => entry.id !== toDelete.id))
-                toast.success("User removed.")
-                setToDelete(null)
+                deleteUser.mutate({ id: toDelete.id })
               }}
             >
-              Delete
+              {deleteUser.isPending ? "Deleting..." : "Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

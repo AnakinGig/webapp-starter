@@ -3,6 +3,7 @@
 import type { ReactNode } from "react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
+import { authClient } from "@/server/better-auth/client"
 
 type Provider = "google" | "github" | "discord"
 
@@ -47,7 +48,11 @@ const PROVIDERS: { id: Provider; label: string; icon: ReactNode }[] = [
 
 export function OAuthButtons() {
   function signIn(provider: Provider) {
-    toast.info(`${provider} OAuth is UI-only here. Connect it in your app.`)
+    if (provider === "github") {
+      void authClient.signIn.social({ provider: "github" })
+      return
+    }
+    toast.info(`${provider} OAuth is not configured in this app yet.`)
   }
 
   return (

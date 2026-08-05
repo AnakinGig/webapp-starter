@@ -9,9 +9,15 @@ export const env = createEnv({
   server: {
     BETTER_AUTH_SECRET:
       process.env.NODE_ENV === "production" ? z.string() : z.string().optional(),
+    BETTER_AUTH_URL: z.string().url(),
     BETTER_AUTH_GITHUB_CLIENT_ID: z.string(),
     BETTER_AUTH_GITHUB_CLIENT_SECRET: z.string(),
-    DATABASE_URL: z.string().url(),
+    SINGLESTORE_HOST: z.string(),
+    SINGLESTORE_PORT: z.coerce.number().int().positive().default(3306),
+    SINGLESTORE_USER: z.string(),
+    SINGLESTORE_PASSWORD: z.string().optional(),
+    SINGLESTORE_DATABASE: z.string(),
+    SINGLESTORE_SSL: z.enum(["true", "false"]).default("true"),
     NODE_ENV: z
       .enum(["development", "test", "production"]) 
       .default("development"),
@@ -32,9 +38,15 @@ export const env = createEnv({
    */
   runtimeEnv: {
     BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET,
+    BETTER_AUTH_URL: process.env.BETTER_AUTH_URL,
     BETTER_AUTH_GITHUB_CLIENT_ID: process.env.BETTER_AUTH_GITHUB_CLIENT_ID,
     BETTER_AUTH_GITHUB_CLIENT_SECRET: process.env.BETTER_AUTH_GITHUB_CLIENT_SECRET,
-    DATABASE_URL: process.env.DATABASE_URL,
+    SINGLESTORE_HOST: process.env.SINGLESTORE_HOST,
+    SINGLESTORE_PORT: process.env.SINGLESTORE_PORT,
+    SINGLESTORE_USER: process.env.SINGLESTORE_USER,
+    SINGLESTORE_PASSWORD: process.env.SINGLESTORE_PASSWORD,
+    SINGLESTORE_DATABASE: process.env.SINGLESTORE_DATABASE,
+    SINGLESTORE_SSL: process.env.SINGLESTORE_SSL,
     NODE_ENV: process.env.NODE_ENV,
   },
   /**

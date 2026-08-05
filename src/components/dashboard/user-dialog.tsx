@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState, type FormEvent } from "react"
-import { toast } from "sonner"
+import { TriangleAlertIcon } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog"
 import {
   Field,
+  FieldError,
   FieldGroup,
   FieldLabel,
 } from "@/components/ui/field"
@@ -26,6 +27,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { isValidEmail } from "@/lib/validation"
 import type { DashboardUser, DashboardUserDraft } from "@/components/dashboard/types"
 
 type Props = {
@@ -34,38 +37,65 @@ type Props = {
   /** Present when editing; undefined when creating. */
   user?: DashboardUser | null
   onSave: (values: DashboardUserDraft, user: DashboardUser | null) => void
+  /** Disable the role picker (editing your own account — the API forbids it). */
+  disabledRole?: boolean
+  /** Server-side mutation error to display inline. */
+  error?: string | null
+  onClearError?: () => void
+  /** True while the create/update mutation is running. */
+  pending?: boolean
 }
 
-export function UserDialog({ open, onOpenChange, user, onSave }: Props) {
+export function UserDialog({
+  open,
+  onOpenChange,
+  user,
+  onSave,
+  disabledRole = false,
+  error,
+  onClearError,
+  pending = false,
+}: Props) {
   const isEdit = Boolean(user)
 
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
-  const [role, setRole] = useState("member")
-  const [banned, setBanned] = useState(false)
+  const [role, setRole] = useState("user")
+  const [localEmailError, setLocalEmailError] = useState<string | null>(null)
 
   useEffect(() => {
     if (open) {
       setName(user?.name ?? "")
       setEmail(user?.email ?? "")
-      setRole(user?.role ?? "member")
-      setBanned(user?.banned ?? false)
+      setRole(user?.role ?? "user")
+      setLocalEmailError(null)
     }
   }, [open, user])
 
+  // Map server errors to the field they concern; anything else is form-level.
+  const emailError = error && /email|already exists|taken/i.test(error) ? error : null
+  const roleError =
+    error && !emailError && /role|admin/i.test(error) ? error : null
+  const formError = error && !emailError && !roleError ? error : null
+  const emailInvalid = Boolean(emailError ?? localEmailError)
+
   function handleSubmit(e: FormEvent) {
     e.preventDefault()
+    if (!isValidEmail(email)) {
+      setLocalEmailError("Enter a valid email address.")
+      return
+    }
+    setLocalEmailError(null)
     onSave(
       {
         name,
         email,
-        role: role as "admin" | "member",
-        banned,
+        role: role as "admin" | "user",
       },
       user ?? null,
     )
-    toast.success(isEdit ? "Changes saved." : "User created.")
-    onOpenChange(false)
+    // Note: the dialog intentionally stays open — the parent closes it on
+    // success, and on failure the server error is shown inline below.
   }
 
   return (
@@ -87,7 +117,10 @@ export function UserDialog({ open, onOpenChange, user, onSave }: Props) {
               <Input
                 id="user-name"
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={(e) => {
+                  setName(e.target.value)
+                  onClearError?.()
+                }}
                 placeholder="Ada Lovelace"
                 required
               />
@@ -98,52 +131,76 @@ export function UserDialog({ open, onOpenChange, user, onSave }: Props) {
                 id="user-email"
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value)
+                  setLocalEmailError(null)
+                  onClearError?.()
+                }}
                 placeholder="you@company.com"
+                aria-invalid={emailInvalid}
                 required
               />
+              {(emailError ?? localEmailError) && (
+                <FieldError>{emailError ?? localEmailError}</FieldError>
+              )}
             </Field>
             <Field>
               <FieldLabel>Role</FieldLabel>
               <Select
                 value={role}
                 onValueChange={(value) => {
-                  if (value) setRole(value)
+                  if (value) {
+                    setRole(value)
+                    onClearError?.()
+                  }
                 }}
+                disabled={disabledRole}
               >
-                <SelectTrigger className="w-full">
+                <SelectTrigger className="w-full" disabled={disabledRole}>
                   <SelectValue placeholder="Select a role" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
-                    <SelectItem value="member">Member</SelectItem>
-                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="user" disabled={disabledRole}>
+                      User
+                    </SelectItem>
+                    <SelectItem value="admin" disabled={disabledRole}>
+                      Admin
+                    </SelectItem>
                   </SelectGroup>
                 </SelectContent>
               </Select>
+              {roleError && <FieldError>{roleError}</FieldError>}
+              {disabledRole && (
+                <p className="text-xs text-muted-foreground">
+                  You can&apos;t change your own role.
+                </p>
+              )}
             </Field>
-            {isEdit && (
-              <Field orientation="horizontal">
-                <input
-                  id="user-banned"
-                  type="checkbox"
-                  checked={banned}
-                  onChange={(e) => setBanned(e.target.checked)}
-                  className="size-4 rounded border-input accent-primary"
-                />
-                <FieldLabel htmlFor="user-banned" className="font-normal">
-                  Suspend this user&apos;s access
-                </FieldLabel>
-              </Field>
+            {formError && (
+              <Alert variant="destructive">
+                <TriangleAlertIcon />
+                <AlertDescription>{formError}</AlertDescription>
+              </Alert>
             )}
           </FieldGroup>
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+            >
               Cancel
             </Button>
-            <Button type="submit">
-              {isEdit ? "Save changes" : "Create user"}
+            <Button type="submit" disabled={pending}>
+              {pending
+                ? isEdit
+                  ? "Saving…"
+                  : "Creating…"
+                : isEdit
+                  ? "Save changes"
+                  : "Create user"}
             </Button>
           </DialogFooter>
         </form>

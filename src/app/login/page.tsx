@@ -12,7 +12,7 @@ export default function LoginPage() {
     <AuthShell
       eyebrow="/login"
       title="Sign in to your account"
-      description="Use the pre-filled demo credentials to explore, or sign in with your own."
+      description="Sign in to your account with your email and password."
       footer={
         <>
           {"Don't have an account? "}
