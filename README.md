@@ -128,8 +128,40 @@ src/
 - [ ] **Privacy Policy** page (`/privacy`) — what data is collected (email, name, IP, session metadata, OAuth profile), why, retention period, and user rights
 - [ ] **Terms of Service** page (`/terms`) — acceptable use, account termination, disclaimers, liability limits
 - [ ] **Cookie consent banner** — required for EU/UK visitors (ePrivacy + GDPR) if you set cookies beyond strictly-necessary ones (e.g. analytics)
-- [ ] **GDPR/CCPA compliance** — data export is missing (self-service account deletion is already live in Settings → Profile → Danger zone), plus a documented Data Processing Agreement story for any sub-processors (SingleStore region, GitHub OAuth)
+- [ ] **GDPR/CCPA compliance** — see the dedicated section below
 - [ ] **Age gate / minimum age notice** — 13+ (COPPA) or 16+ (GDPR) depending on your audience
+
+#### GDPR / CCPA / CPRA compliance
+
+> EU/UK GDPR and California CCPA/CPRA share the same core: **tell users what you collect, why, and who you share it with; let them access, fix, export, and delete their data; keep it secure.** This section is grounded in what the boilerplate actually stores and does today — tick the ⬜ items as you ship them.
+
+**What the app stores (data inventory)**
+
+- **Profile** — name, email, avatar image (`user` table)
+- **Auth** — hashed password + OAuth tokens/IDs (`account` table; GitHub OAuth passes name, email, avatar)
+- **Sessions** — IP address, user-agent, expiry (`session` table); powers the devices list and revoke
+- **Content** — user-generated rows such as `post` (`createdById`)
+- **Where it lives** — SingleStore (cloud; check your Helios region) + GitHub for OAuth
+
+**Already handled in the code** ✅
+
+- **Erasure (right to be forgotten)** — self-service account deletion in Settings → Profile → Danger zone, cascading posts, sessions, and accounts
+- **Security (GDPR Art. 32)** — passwords hashed by better-auth, TLS required by SingleStore Helios, admin-only user management with guard rails, per-device and bulk session revocation
+- **Rectification** — name is editable in Settings → Profile (email change is a listed TODO)
+
+**Still to do** ⬜
+
+- [ ] **Data export (portability)** — a `user.exportData` tRPC endpoint + a button in Settings that returns the user's data as JSON. This is the main missing user right.
+- [ ] **Records of processing** — document every data category, its purpose, legal basis, and retention period (e.g. in `docs/privacy.md`)
+- [ ] **Privacy Policy page** (`/privacy`) — the public-facing version of the above (see the legal list)
+- [ ] **Cookie consent** — the session cookie is *strictly necessary* (no consent needed); the moment you add analytics or ads you need an opt-in banner
+- [ ] **Retention & purge** — a scheduled job to delete expired sessions and (optionally) dormant accounts per your retention policy
+- [ ] **DPA / sub-processors** — confirm SingleStore's DPA and data region, disclose GitHub OAuth's data handling, and sign DPAs with anyone processing data on your behalf
+- [ ] **Breach response** — document the 72-hour notification process (EU authorities) and the person to contact
+- [ ] **Rights handling** — define how you answer access / rectification / erasure requests within the legal deadline (30 days)
+- [ ] **CCPA/CPRA extras** — the app does not sell personal information, so you mainly need right-to-know/delete flows plus a “Do Not Sell or Share My Personal Information” link *if* you ever add ads/analytics; never discriminate against users who exercise their rights
+- [ ] **Age gate** — 13+ (COPPA) / 16+ (GDPR) before signup (see the legal list)
+- [ ] **Data minimization review** — keep IP/user-agent only as long as sessions need them; never log emails or user IDs in app logs
 - [ ] **Contact for privacy/legal** — email address or form for privacy requests
 - [ ] **`security.txt`** + responsible-disclosure note for security researchers
 - [ ] **Copyright / license notice** on your content and a LICENSE file for the code you ship
