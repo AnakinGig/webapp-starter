@@ -222,6 +222,68 @@ export const userRouter = createTRPCRouter({
     }),
 
   /**
+   * Self-service data export (GDPR portability) from the settings page. Any
+   * logged-in user gets their OWN data only — the id always comes from the
+   * session. Credentials are redacted on purpose: session tokens, OAuth
+   * access/refresh/id tokens, and password hashes are secrets, not portable
+   * personal data, and must never leave the server.
+   */
+  exportData: protectedProcedure.query(async ({ ctx }) => {
+    const userId = ctx.session.user.id;
+    // Parallel reads — SingleStore round trips are the dominant cost.
+    const [profile, accounts, sessions, posts] = await Promise.all([
+      db
+        .select({
+          id: userTable.id,
+          name: userTable.name,
+          email: userTable.email,
+          emailVerified: userTable.emailVerified,
+          role: userTable.role,
+          image: userTable.image,
+          createdAt: userTable.createdAt,
+          updatedAt: userTable.updatedAt,
+        })
+        .from(userTable)
+        .where(eq(userTable.id, userId))
+        .limit(1),
+      db
+        .select({
+          providerId: accountTable.providerId,
+          accountId: accountTable.accountId,
+          scope: accountTable.scope,
+          createdAt: accountTable.createdAt,
+          updatedAt: accountTable.updatedAt,
+        })
+        .from(accountTable)
+        .where(eq(accountTable.userId, userId))
+        .orderBy(asc(accountTable.createdAt)),
+      db
+        .select({
+          ipAddress: sessionTable.ipAddress,
+          userAgent: sessionTable.userAgent,
+          createdAt: sessionTable.createdAt,
+          expiresAt: sessionTable.expiresAt,
+        })
+        .from(sessionTable)
+        .where(eq(sessionTable.userId, userId))
+        .orderBy(asc(sessionTable.createdAt)),
+      db
+        .select()
+        .from(postsTable)
+        .where(eq(postsTable.createdById, userId))
+        .orderBy(asc(postsTable.createdAt)),
+    ]);
+
+    return {
+      exportedAt: new Date(),
+      user: profile[0] ?? null,
+      accounts,
+      sessions,
+      posts,
+    };
+  }),
+
+  /**
    * Self-service account deletion from the settings danger zone. Any logged-in
    * user can delete their OWN account — the id always comes from the session,
    * never from client input. Guard: the last admin cannot delete their account

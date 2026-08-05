@@ -47,7 +47,7 @@ T3 stack app (Next.js 15 App Router + tRPC + Drizzle + Tailwind v4 + shadcn/ui) 
 
 - New routers must be manually registered on `appRouter` in `src/server/api/root.ts`.
 - superjson transformer; zod validation errors are flattened into `shape.data.zodError`.
-- `adminProcedure` in `src/server/api/trpc.ts` requires `session.user.role === "admin"` (throws `FORBIDDEN`). The `user` router is admin-only and carries guard rails: no self-delete / self role change, no last-admin delete/demote, duplicate emails rejected, and delete cascades the target's `session`/`account` rows (no FK support on SingleStore). The one exception is `user.verifyPassword` — a `protectedProcedure` (any logged-in user) that delegates to better-auth's server-scoped verify-password endpoint for blur-time password checks on the settings form.
+- `adminProcedure` in `src/server/api/trpc.ts` requires `session.user.role === "admin"` (throws `FORBIDDEN`). The `user` router is admin-only and carries guard rails: no self-delete / self role change, no last-admin delete/demote, duplicate emails rejected, and delete cascades the target's `session`/`account` rows (no FK support on SingleStore). The self-service exceptions are all `protectedProcedure`s (any logged-in user, never admin-gated): `user.verifyPassword` (delegates to better-auth's server-scoped verify-password endpoint for blur-time checks), `user.exportData` (GDPR export — credentials like tokens/passwords are redacted), and `user.deleteAccount` (last-admin guard; cascades posts/sessions/accounts). All take the id from `ctx.session` — never from client input.
 
 ## Git workflow
 

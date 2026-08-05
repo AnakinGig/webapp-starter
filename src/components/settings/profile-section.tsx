@@ -54,6 +54,13 @@ export function ProfileSection() {
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const deleteAccount = api.user.deleteAccount.useMutation()
 
+  // Data export state
+  const [exporting, setExporting] = useState(false)
+  const [exportError, setExportError] = useState<string | null>(null)
+  const exportData = api.user.exportData.useQuery(undefined, {
+    enabled: false,
+  })
+
   useEffect(() => {
     if (user) setName(user.name ?? "")
   }, [user])
@@ -78,6 +85,35 @@ export function ProfileSection() {
     setNameError(null)
     await refetchSession()
     toast.success("Profile updated.")
+  }
+
+  async function handleExport() {
+    if (exporting) return
+    setExportError(null)
+    setExporting(true)
+    try {
+      const res = await exportData.refetch()
+      if (res.error) throw new Error(res.error.message)
+      if (!res.data) throw new Error("No data returned.")
+
+      const blob = new Blob([JSON.stringify(res.data, null, 2)], {
+        type: "application/json",
+      })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      link.href = url
+      link.download = `account-data-${new Date().toISOString().slice(0, 10)}.json`
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      // Defer the revoke — revoking in the same tick can abort the download
+      // in Firefox.
+      setTimeout(() => URL.revokeObjectURL(url), 0)
+    } catch (e) {
+      setExportError(e instanceof Error ? e.message : "Export failed.")
+    } finally {
+      setExporting(false)
+    }
   }
 
   function handleDelete(e: FormEvent) {
@@ -188,6 +224,43 @@ export function ProfileSection() {
             </Button>
           </CardFooter>
         </form>
+      </Card>
+
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle>Account data</CardTitle>
+          <CardDescription>
+            Download everything this app stores about your account.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="pb-(--card-spacing)">
+          <div className="flex flex-col gap-3 rounded-lg border border-border p-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+            <div className="min-w-0">
+              <p className="text-sm font-medium">Export your data</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Your profile, sessions, connected accounts, and content as a
+                JSON file. Credentials (tokens, passwords) are never included.
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              className="shrink-0"
+              disabled={exporting}
+              onClick={() => void handleExport()}
+            >
+              {exporting ? "Preparing…" : "Export JSON"}
+            </Button>
+          </div>
+          {exportError && (
+            <p
+              role="alert"
+              className="mt-3 text-sm text-destructive"
+            >
+              {exportError}
+            </p>
+          )}
+        </CardContent>
       </Card>
 
       <Card className="mt-6 border-destructive/50">

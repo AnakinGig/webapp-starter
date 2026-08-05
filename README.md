@@ -148,10 +148,11 @@ src/
 - **Erasure (right to be forgotten)** — self-service account deletion in Settings → Profile → Danger zone, cascading posts, sessions, and accounts
 - **Security (GDPR Art. 32)** — passwords hashed by better-auth, TLS required by SingleStore Helios, admin-only user management with guard rails, per-device and bulk session revocation
 - **Rectification** — name is editable in Settings → Profile (email change is a listed TODO)
+- **Portability** — JSON export of profile, sessions, connected accounts, and content in Settings → Profile → Account data (credentials redacted)
 
 **Still to do** ⬜
 
-- [ ] **Data export (portability)** — a `user.exportData` tRPC endpoint + a button in Settings that returns the user's data as JSON. This is the main missing user right.
+- [x] **Data export (portability)** — Settings → Profile → Account data → “Export JSON” (a `user.exportData` tRPC query; credentials such as tokens/passwords are redacted)
 - [ ] **Records of processing** — document every data category, its purpose, legal basis, and retention period (e.g. in `docs/privacy.md`)
 - [ ] **Privacy Policy page** (`/privacy`) — the public-facing version of the above (see the legal list)
 - [ ] **Cookie consent** — the session cookie is *strictly necessary* (no consent needed); the moment you add analytics or ads you need an opt-in banner
