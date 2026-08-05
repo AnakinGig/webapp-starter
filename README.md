@@ -69,6 +69,8 @@ pnpm dev        # http://localhost:3000
 | `BETTER_AUTH_SECRET` | prod | random secret (see `.env.example`) |
 | `BETTER_AUTH_URL` | ✅ | e.g. `http://localhost:3000` |
 | `BETTER_AUTH_GITHUB_CLIENT_ID` / `..._SECRET` | ✅ | dummy values pass in dev; GitHub OAuth redirect is hardcoded to `http://localhost:3000` |
+| `RESEND_API_KEY` | - | optional; unset/empty = verification & reset links are logged to the dev console (see 📧 Email section) |
+| `RESEND_EMAIL_FROM` | - | optional; defaults to Resend's shared test domain `onboarding@resend.dev` |
 
 New env vars must be added to both `src/env.js` and `.env.example`.
 

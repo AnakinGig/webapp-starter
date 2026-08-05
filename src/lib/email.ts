@@ -25,7 +25,7 @@ function fromAddress(): string {
   return env.RESEND_EMAIL_FROM ?? `onboarding@resend.dev`;
 }
 
-export function sendActionEmail(opts: {
+export async function sendActionEmail(opts: {
   to: string;
   subject: string;
   heading: string;
@@ -44,25 +44,30 @@ export function sendActionEmail(opts: {
       console.log(
         `[better-auth] ${subject} for ${to} (no email provider, dev log):\n${ctaUrl}`,
       );
-      return Promise.resolve();
+      return;
     }
     console.error(
       "[better-auth] Email sending is enabled but RESEND_API_KEY is not " +
         "configured. Set it in your environment (see .env.example) so users " +
         "receive their emails.",
     );
-    return Promise.resolve();
+    return;
   }
 
   const html = buildHtml({ heading, body, ctaLabel, ctaUrl });
 
-  return client.emails
-    .send({ from: fromAddress(), to, subject, html })
-    .then(({ error }) => {
-      if (error) {
-        throw new Error(error.message ?? "Failed to send email.");
-      }
-    });
+  const { error } = await client.emails.send({
+    from: fromAddress(),
+    to,
+    subject,
+    html,
+  });
+  // The v6 SDK throws on API errors too - this covers the returned-error
+  // branch of its Response<T> type. Either way the failure propagates to
+  // the better-auth hook that called us.
+  if (error) {
+    throw new Error(error.message ?? "Failed to send email.");
+  }
 }
 
 /** Inline-styled HTML (email clients strip <style> tags and Tailwind). */
