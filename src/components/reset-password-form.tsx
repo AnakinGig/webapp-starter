@@ -100,7 +100,7 @@ export function ResetPasswordForm({
           </span>
           <h2 className="text-lg font-semibold tracking-tight">Password updated</h2>
           <p className="text-sm leading-relaxed text-muted-foreground">
-            Your password has been reset. All other sessions were signed out -
+            Your password has been reset and all sessions were signed out -
             sign in with your new password.
           </p>
         </div>
