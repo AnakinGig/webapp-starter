@@ -60,7 +60,7 @@ export default function Page() {
           <div className="relative mx-auto w-full max-w-6xl px-4 py-20 sm:px-6 sm:py-28">
             <p className="mb-5 inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 font-mono text-[11px] uppercase tracking-widest text-muted-foreground">
               <span className="size-1.5 rounded-full bg-brand" />
-              v1.0 — Full-stack starter kit
+              v1.0 - Full-stack starter kit
             </p>
             <h1 className="max-w-3xl text-balance text-4xl font-semibold leading-[1.05] tracking-tight sm:text-6xl">
               The boilerplate to ship your next app faster.

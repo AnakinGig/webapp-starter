@@ -35,24 +35,24 @@ export default function PrivacyPolicyPage() {
         <LegalList
           items={[
             <>
-              <strong>Account data</strong> — your name, email address, and
+              <strong>Account data</strong> - your name, email address, and
               profile picture when you register, or when you sign in with a
               third-party provider (such as GitHub OAuth, which shares your
               name, email, and avatar with your permission).
             </>,
             <>
-              <strong>Authentication and security data</strong> — a securely
+              <strong>Authentication and security data</strong> - a securely
               hashed password if you register with email (never stored in
               plain text), session identifiers, IP addresses, and
               user-agent information, which keep you signed in and help us
               detect abuse.
             </>,
             <>
-              <strong>Content you create</strong> — anything you submit,
+              <strong>Content you create</strong> - anything you submit,
               publish, or upload through the service.
             </>,
             <>
-              <strong>Analytics and marketing data</strong> — only if you
+              <strong>Analytics and marketing data</strong> - only if you
               consent via our cookie banner; we don&apos;t collect any
               tracking data without your choice.
             </>,
@@ -68,7 +68,7 @@ export default function PrivacyPolicyPage() {
             "To communicate with you about your account and service changes.",
             "To prevent fraud, abuse, and security incidents.",
             "To comply with legal obligations.",
-            "To improve the service through aggregated analytics — only where you have consented.",
+            "To improve the service through aggregated analytics - only where you have consented.",
           ]}
         />
       </LegalSection>
@@ -85,7 +85,7 @@ export default function PrivacyPolicyPage() {
 
       <LegalSection id="cookies" title="5. Cookies">
         <LegalParagraph>
-          We use a small number of strictly necessary and functional cookies —
+          We use a small number of strictly necessary and functional cookies -
           for example to keep you signed in and to remember your consent
           choices. Optional analytics and marketing cookies are only used if
           you allow them through the consent banner, which you can reopen at
@@ -121,7 +121,7 @@ export default function PrivacyPolicyPage() {
           We keep your data for as long as your account is active and for as
           long as needed to comply with legal obligations, resolve disputes,
           and enforce our agreements. Session data expires automatically.
-          You can delete your account — and all of your data — at any time
+          You can delete your account - and all of your data - at any time
           from Settings → Profile → Danger zone.
         </LegalParagraph>
       </LegalSection>
@@ -135,24 +135,24 @@ export default function PrivacyPolicyPage() {
         <LegalList
           items={[
             <>
-              <strong>Access and rectification</strong> — review and edit your
+              <strong>Access and rectification</strong> - review and edit your
               profile in Settings.
             </>,
             <>
-              <strong>Export (portability)</strong> — download your data as
+              <strong>Export (portability)</strong> - download your data as
               JSON from Settings → Profile → Account data.
             </>,
             <>
-              <strong>Erasure</strong> — delete your account in Settings →
+              <strong>Erasure</strong> - delete your account in Settings →
               Profile → Danger zone, which removes your profile, sessions,
               and content.
             </>,
             <>
-              <strong>Withdraw consent</strong> — change your cookie choices
+              <strong>Withdraw consent</strong> - change your cookie choices
               anytime via the footer &ldquo;Cookie settings&rdquo; link.
             </>,
             <>
-              <strong>Complaints</strong> — contact us first at{" "}
+              <strong>Complaints</strong> - contact us first at{" "}
               <LegalEmailLink />; you also have the right to lodge a complaint
               with your local data-protection authority (EU/UK) or the
               California Privacy Protection Agency (US).

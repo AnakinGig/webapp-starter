@@ -106,7 +106,7 @@ export function ProfileSection() {
       document.body.appendChild(link)
       link.click()
       link.remove()
-      // Defer the revoke — revoking in the same tick can abort the download
+      // Defer the revoke - revoking in the same tick can abort the download
       // in Firefox.
       setTimeout(() => URL.revokeObjectURL(url), 0)
     } catch (e) {
@@ -162,7 +162,7 @@ export function ProfileSection() {
                 </Avatar>
                 <div className="flex flex-col gap-1">
                   <span className="text-sm font-medium">
-                    {user?.name ?? "—"}
+                    {user?.name ?? "-"}
                   </span>
                   <span className="text-xs text-muted-foreground">
                     {user?.email}

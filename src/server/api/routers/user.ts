@@ -21,7 +21,7 @@ const PAGE_SIZE = 10;
 
 /**
  * Anti-spam guard for verification emails. In-memory (per server instance),
- * so it's a soft limit — on serverless deployments, move this to the DB if
+ * so it's a soft limit - on serverless deployments, move this to the DB if
  * you need a hard one.
  */
 const verificationCooldown = new Map<string, number>();
@@ -62,7 +62,7 @@ export const userRouter = createTRPCRouter({
 
   /** Workspace-wide aggregates for the dashboard stat cards. Admin only. */
   getStats: adminProcedure.query(async () => {
-    // Single aggregate query instead of three separate counts — SingleStore
+    // Single aggregate query instead of three separate counts - SingleStore
     // round trips are the dominant cost on the shared tier.
     const [row] = await db
       .select({
@@ -273,14 +273,14 @@ export const userRouter = createTRPCRouter({
 
   /**
    * Self-service data export (GDPR portability) from the settings page. Any
-   * logged-in user gets their OWN data only — the id always comes from the
+   * logged-in user gets their OWN data only - the id always comes from the
    * session. Credentials are redacted on purpose: session tokens, OAuth
    * access/refresh/id tokens, and password hashes are secrets, not portable
    * personal data, and must never leave the server.
    */
   exportData: protectedProcedure.query(async ({ ctx }) => {
     const userId = ctx.session.user.id;
-    // Parallel reads — SingleStore round trips are the dominant cost.
+    // Parallel reads - SingleStore round trips are the dominant cost.
     const [profile, accounts, sessions, posts] = await Promise.all([
       db
         .select({
@@ -335,7 +335,7 @@ export const userRouter = createTRPCRouter({
 
   /**
    * Self-service account deletion from the settings danger zone. Any logged-in
-   * user can delete their OWN account — the id always comes from the session,
+   * user can delete their OWN account - the id always comes from the session,
    * never from client input. Guard: the last admin cannot delete their account
    * (the app must always keep an admin). Cascades sessions, accounts, and the
    * user's posts, since SingleStore has no FK cascades.
@@ -410,7 +410,7 @@ export const userRouter = createTRPCRouter({
           }
         }
 
-        // SingleStore has no FK cascades — clean up related rows explicitly
+        // SingleStore has no FK cascades - clean up related rows explicitly
         // (posts included, matching the self-service deleteAccount behavior).
         await tx.delete(postsTable).where(eq(postsTable.createdById, input.id));
         await tx.delete(sessionTable).where(eq(sessionTable.userId, input.id));

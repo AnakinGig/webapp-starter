@@ -80,7 +80,7 @@ export function RegisterForm() {
       }
       return
     }
-    // Email/password signups start unverified — show the confirmation step.
+    // Email/password signups start unverified - show the confirmation step.
     // Prefer the server-normalized email (better-auth lowercases it).
     setCreatedEmail(data?.user?.email ?? email)
   }
@@ -97,7 +97,7 @@ export function RegisterForm() {
           </h2>
           <p className="text-sm leading-relaxed text-muted-foreground">
             We sent a verification link to <strong>{createdEmail}</strong>.
-            Click it to confirm your address — you can keep using the app
+            Click it to confirm your address - you can keep using the app
             before you verify. Don&apos;t see it? Check your spam folder, or
             resend from Settings → Security.
           </p>

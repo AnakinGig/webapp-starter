@@ -87,7 +87,7 @@ export default function CookiePolicyPage() {
           secure prefix (<code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">__Secure-better-auth.session_token</code>).
           If you enable additional authentication plugins (for example
           last-login-method or OAuth popups), extra functional cookies may be
-          set — update this table accordingly.
+          set - update this table accordingly.
         </LegalParagraph>
       </LegalSection>
 
@@ -102,12 +102,12 @@ export default function CookiePolicyPage() {
         <LegalList
           items={[
             <>
-              <strong>Withdraw or change your choice</strong> — use the
+              <strong>Withdraw or change your choice</strong> - use the
               &ldquo;Cookie settings&rdquo; link in the footer, or your
               browser&apos;s cookie controls, at any time.
             </>,
             <>
-              <strong>How long consent lasts</strong> — your choice is stored
+              <strong>How long consent lasts</strong> - your choice is stored
               in a cookie for one year, after which you&apos;ll be asked
               again. We may also re-ask if our policy changes materially.
             </>,

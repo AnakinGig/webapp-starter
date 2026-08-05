@@ -37,7 +37,7 @@ type Props = {
   /** Present when editing; undefined when creating. */
   user?: DashboardUser | null
   onSave: (values: DashboardUserDraft, user: DashboardUser | null) => void
-  /** Disable the role picker (editing your own account — the API forbids it). */
+  /** Disable the role picker (editing your own account - the API forbids it). */
   disabledRole?: boolean
   /** Server-side mutation error to display inline. */
   error?: string | null
@@ -94,7 +94,7 @@ export function UserDialog({
       },
       user ?? null,
     )
-    // Note: the dialog intentionally stays open — the parent closes it on
+    // Note: the dialog intentionally stays open - the parent closes it on
     // success, and on failure the server error is shown inline below.
   }
 

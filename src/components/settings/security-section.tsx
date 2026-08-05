@@ -117,7 +117,7 @@ export function SecuritySection() {
       onSuccess: () => {
         setVerifySent(true)
         setCooldown(60)
-        // The session may not carry the new flag yet — refresh for accuracy.
+        // The session may not carry the new flag yet - refresh for accuracy.
         void refetchSession()
       },
       onError: (err) => {
@@ -220,7 +220,7 @@ export function SecuritySection() {
     setChangingPassword(false)
 
     if (error) {
-      // Server rejections here are about the current password — show inline.
+      // Server rejections here are about the current password - show inline.
       setFieldErrors({
         current: error.message ?? "Current password is incorrect.",
       })
@@ -294,7 +294,7 @@ export function SecuritySection() {
               {verifySent && !isVerified && (
                 <p className="mt-3 flex items-center gap-1.5 text-sm text-muted-foreground">
                   <CheckIcon className="size-3.5" />
-                  Verification email sent — check your inbox.
+                  Verification email sent - check your inbox.
                 </p>
               )}
               {verifyError && (

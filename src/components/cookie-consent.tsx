@@ -28,7 +28,7 @@ export function CookieConsent() {
   })
 
   useEffect(() => {
-    // Check on mount only — the banner is purely client-side, so the server
+    // Check on mount only - the banner is purely client-side, so the server
     // render never shows it (no hydration mismatch).
     if (!readConsent()) setShowBanner(true)
 
@@ -38,7 +38,7 @@ export function CookieConsent() {
     return () => window.removeEventListener(COOKIE_PREFERENCES_EVENT, onOpen)
   }, [])
 
-  // Always reflect the stored consent when opening the dialog — otherwise
+  // Always reflect the stored consent when opening the dialog - otherwise
   // saving could silently disable categories the user already accepted.
   function openPreferences() {
     const stored = readConsent()
@@ -83,7 +83,7 @@ export function CookieConsent() {
                     We use <span className="font-medium text-foreground">essential and technical cookies</span>{" "}
                     to keep you signed in, remember your choices, and make the
                     app work. We only use analytics or marketing cookies if you
-                    allow them — you can change this anytime.
+                    allow them - you can change this anytime.
                   </p>
                 </div>
                 <div className="flex shrink-0 flex-wrap items-center gap-2">

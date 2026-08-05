@@ -15,8 +15,8 @@ export const metadata: Metadata = {
   metadataBase: new URL(appSettings.url),
   applicationName: appSettings.shortName,
   title: {
-    default: `${appSettings.name} — ${appSettings.tagline}`,
-    template: `%s — ${appSettings.name}`,
+    default: `${appSettings.name} - ${appSettings.tagline}`,
+    template: `%s - ${appSettings.name}`,
   },
   description: appSettings.description,
   icons: {
