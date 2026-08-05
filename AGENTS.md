@@ -41,7 +41,7 @@ T3 stack app (Next.js 15 App Router + tRPC + Drizzle + Tailwind v4 + shadcn/ui) 
 
 ## Git workflow
 
-- The user wants every feature committed and pushed to GitHub (`origin` at github.com/AnakinGig/webapp-starter) as soon as it's complete. Current working branch: `prepare-db-singlestore`.
+- The user wants every feature committed and pushed to GitHub (`origin` at github.com/AnakinGig/webapp-starter) as soon as it's complete. Current working branch: `dev` (check `git branch --show-current` before pushing — never hardcode it).
 - After a feature is done and `pnpm check` is green: `git add` the relevant files, commit with a concise descriptive message (e.g. `feat(settings): add session management`), then `git push origin <branch>`.
 - Do not commit secrets: `.env` is gitignored; only `.env.example` (placeholders) is committed.
 
