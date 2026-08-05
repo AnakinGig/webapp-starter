@@ -1,6 +1,16 @@
 # AGENTS.md
 
-T3 stack app (Next.js 15 App Router + tRPC + Drizzle + Tailwind v4 + shadcn/ui) with **better-auth** replacing NextAuth, backed by **SingleStore** (see `docs/singlestore.md`). No test framework is installed. README.md is stale (still references NextAuth/Prisma/SQLite) — ignore it.
+T3 stack app (Next.js 15 App Router + tRPC + Drizzle + Tailwind v4 + shadcn/ui) with **better-auth** replacing NextAuth, backed by **SingleStore** (see `docs/singlestore.md`). No test framework is installed. README.md is the source of truth for setup, features, and the roadmap — keep it in sync whenever a feature changes it.
+
+## Working rules (apply to every feature)
+
+- **Commit after every feature**: once a feature is complete and `pnpm check` passes, commit it with a concise message and push to `origin` (see *Git workflow* below). Never leave finished work uncommitted.
+- **Form errors go under the input, not in toasts**: every validation/API error must render inline as a `FieldError` under the field where it occurred, with `aria-invalid` on the input. Toasts are for success, not for errors. When a server error points at a specific field (e.g. duplicate email), map it under that field; otherwise show it as a form-level `Alert`.
+- **Validate on the frontend when possible**: mirror server rules client-side (format, length, match, policy) so users get instant feedback — but only where it isn't a security risk. Never trust client checks: the server must always re-validate (passwords, permissions, ownership, etc.).
+- **Surface results as fast as possible**: run cheap checks when the user leaves a field (on blur), not only on submit — e.g. verify the current password against the backend on blur, check email format on blur. Guard in-flight calls (refs + pending flags) so stale responses never overwrite newer input.
+- **Use shadcn/ui first**: build UI from the shadcn components in `src/components/ui` (extend with `pnpm dlx shadcn add ...`); do not hand-roll new primitives.
+- **Security review per feature**: before finishing anything, ask what an attacker could do with it — auth bypass, privilege escalation, data leaks, mass assignment, password oracles, missing rate limits, cascading deletes. Enforce authorization server-side, never only in the UI. Explicitly flag any remaining risk to the user.
+- **Update the README when needed**: if a feature changes setup, env vars, routes, or the roadmap, update README.md (and `.env.example` for new env vars) in the same commit.
 
 ## Commands (pnpm only)
 
@@ -41,7 +51,7 @@ T3 stack app (Next.js 15 App Router + tRPC + Drizzle + Tailwind v4 + shadcn/ui) 
 
 ## Git workflow
 
-- The user wants every feature committed and pushed to GitHub (`origin` at github.com/AnakinGig/webapp-starter) as soon as it's complete. Current working branch: `dev` (check `git branch --show-current` before pushing — never hardcode it).
+- The user wants every feature committed and pushed to GitHub (`origin` at github.com/AnakinGig/webapp-starter) as soon as it's complete. Check `git branch --show-current` before pushing — never hardcode the branch name.
 - After a feature is done and `pnpm check` is green: `git add` the relevant files, commit with a concise descriptive message (e.g. `feat(settings): add session management`), then `git push origin <branch>`.
 - Do not commit secrets: `.env` is gitignored; only `.env.example` (placeholders) is committed.
 
@@ -49,4 +59,4 @@ T3 stack app (Next.js 15 App Router + tRPC + Drizzle + Tailwind v4 + shadcn/ui) 
 
 - Path aliases `~/*` and `@/*` both map to `./src/*`.
 - ESLint enforces `consistent-type-imports` (inline `type` imports), and drizzle rules error on `db.delete()` / `db.update()` without a `.where()`.
-- UI components live in `src/components/ui` (shadcn "base-nova" style); use `pnpm dlx shadcn add ...` to add more.
+- UI components live in `src/components/ui` (shadcn "base-nova" style); always prefer them and extend with `pnpm dlx shadcn add ...` rather than hand-rolling new primitives.
