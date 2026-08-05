@@ -14,6 +14,7 @@ import {
   adminProcedure,
   createTRPCRouter,
   protectedProcedure,
+  publicProcedure,
 } from "~/server/api/trpc";
 import { appSettings } from "~/lib/app";
 
@@ -26,6 +27,15 @@ const PAGE_SIZE = 10;
  */
 const verificationCooldown = new Map<string, number>();
 const VERIFICATION_COOLDOWN_MS = 60_000;
+
+/**
+ * Anti-spam guard for password reset emails, keyed by email address (a
+ * logged-out user has no session id). In-memory (per server instance), so it's
+ * a soft limit - on serverless deployments, move this to the DB if you need a
+ * hard one.
+ */
+const resetCooldown = new Map<string, number>();
+const RESET_COOLDOWN_MS = 60_000;
 
 /** Normalized (lowercased) email used by better-auth when signing up. */
 const normalizeEmail = (email: string) => email.toLowerCase();
@@ -40,6 +50,44 @@ const normalizeEmail = (email: string) => email.toLowerCase();
  */
 
 export const userRouter = createTRPCRouter({
+  /**
+   * Request a password reset email. Public - the user is not signed in, that's
+   * the point. Guard rails: better-auth never reveals whether an email has an
+   * account (anti-enumeration, returns the same generic response either way),
+   * and a 60s per-email cooldown limits reset-link spam. The one-time link
+   * expires after 1 hour.
+   */
+  requestPasswordReset: publicProcedure
+    .input(z.object({ email: z.string().trim().email() }))
+    .mutation(async ({ ctx, input }) => {
+      const email = normalizeEmail(input.email);
+
+      const lastSent = resetCooldown.get(email);
+      if (lastSent && Date.now() - lastSent < RESET_COOLDOWN_MS) {
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message:
+            "A reset email was sent recently. Please wait a minute before trying again.",
+        });
+      }
+
+      await auth.api.requestPasswordReset({
+        headers: ctx.headers,
+        body: {
+          email,
+          redirectTo: `${appSettings.url}/reset-password`,
+        },
+      });
+
+      // Record the send and sweep stale entries so the map stays bounded.
+      resetCooldown.set(email, Date.now());
+      for (const [key, sentAt] of resetCooldown) {
+        if (Date.now() - sentAt > RESET_COOLDOWN_MS) {
+          resetCooldown.delete(key);
+        }
+      }
+    }),
+
   /**
    * Verify the caller's OWN password (used for blur-time validation on the
    * change-password form). Self-service: any logged-in user, NOT admin-gated.

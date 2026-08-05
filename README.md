@@ -15,6 +15,7 @@ Built with the [T3 Stack](https://create.t3.gg/): **Next.js 15** (App Router) ·
 - **ANSSI-style password strength meter** (pattern detection for `1234`/`qwerty`/`abcde`, repeated chars)
 - **Session management**: list active devices, sign out individual sessions or all other sessions
 - Blur-time current-password verification (server-side check) + change password
+- **Forgot / reset password** - one-time reset links (1h expiry), all sessions revoked on reset, 60s resend cooldown; in dev the link prints to the server console
 - Inline form errors under fields (no toast spam), `aria-invalid` for accessibility
 
 **Admin dashboard (`/dashboard`, admin-only)**
@@ -185,7 +186,7 @@ Everything brand-related lives in **one file: `src/lib/app.ts`**. Edit it and th
 ### Product hardening (recommended next)
 
 - [x] **Email verification** - sent automatically on email signup, resend from Settings → Security (60s cooldown); in dev the link prints to the server console (no provider bundled) - swap `sendVerificationEmail` in `src/server/better-auth/config.ts` for Resend/SES/Postmark to deliver real emails
-- [ ] **Forgot / reset password** flow
+- [x] **Forgot / reset password** - `/forgot-password` requests a one-time link (1h expiry) via `sendResetPassword` (logged to console in dev, swap for Resend/SES/Postmark); `/reset-password` consumes it and sets a new password with `revokeSessionsOnPasswordReset` (all sessions signed out) and a 60s per-email cooldown on the request endpoint
 - [ ] **Rate limiting** on auth endpoints (`/api/auth/*`, login, verifyPassword)
 - [ ] **Two-factor authentication (TOTP)**
 - [ ] **Profile pictures** (upload + storage)
@@ -196,7 +197,6 @@ Everything brand-related lives in **one file: `src/lib/app.ts`**. Edit it and th
 
 ### Nice-to-haves
 
-- [ ] Stripe / billing integration (see `docs/`)
 - [ ] Email service (transactional + password reset emails)
 - [ ] Dockerfile + deployment guides
 - [ ] i18n

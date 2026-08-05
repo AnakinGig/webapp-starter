@@ -1,9 +1,9 @@
 "use client"
 
 import { useState, type FormEvent } from "react"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { MailWarningIcon, TriangleAlertIcon } from "lucide-react"
-import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -114,13 +114,12 @@ export function LoginForm() {
         <Field>
           <div className="flex items-center justify-between">
             <FieldLabel htmlFor="password">Password</FieldLabel>
-            <button
-              type="button"
+            <Link
+              href="/forgot-password"
               className="font-mono text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-              onClick={() => toast.info("Password reset is not wired up in this MVP.")}
             >
               Forgot?
-            </button>
+            </Link>
           </div>
           <Input
             id="password"
