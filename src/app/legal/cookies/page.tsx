@@ -36,20 +36,8 @@ const cookies = [
   },
   {
     name: "better-auth.message",
-    purpose: "Transient messages during sign-in/out flows",
+    purpose: "Transient messages during sign-in/out redirects",
     category: "Functional",
-    expiry: "Session",
-  },
-  {
-    name: "better-auth.last_used_login_method",
-    purpose: "Remembers your preferred sign-in method",
-    category: "Functional",
-    expiry: "1 year",
-  },
-  {
-    name: "better-auth.popup_token",
-    purpose: "Handles OAuth popup sign-in",
-    category: "Essential",
     expiry: "Session",
   },
 ]
@@ -97,6 +85,9 @@ export default function CookiePolicyPage() {
         <LegalParagraph>
           Note: on HTTPS deployments the auth session cookie is served with a
           secure prefix (<code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">__Secure-better-auth.session_token</code>).
+          If you enable additional authentication plugins (for example
+          last-login-method or OAuth popups), extra functional cookies may be
+          set — update this table accordingly.
         </LegalParagraph>
       </LegalSection>
 
