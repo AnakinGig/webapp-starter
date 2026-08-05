@@ -74,6 +74,27 @@ New env vars must be added to both `src/env.js` and `.env.example`.
 
 ---
 
+## 📧 Email (verification & password reset)
+
+Verification and password-reset emails are sent via **Resend** (`src/lib/email.ts`). Without an API key, both hooks fall back to **printing the link to the dev console** - local flows work with zero setup, but no email is actually sent.
+
+**To enable real emails:**
+
+1. Create a free account at [resend.com](https://resend.com) (3,000 emails/month free).
+2. Generate an API key at `resend.com/api-keys` and add it to `.env`:
+   ```bash
+   RESEND_API_KEY="re_xxxxxxxx"
+   ```
+3. For **local testing** you're done - emails are sent from Resend's shared test domain `onboarding@resend.dev` and only deliver to the address you verified on your Resend account.
+4. For **production**, add your own domain in Resend (DNS verification: SPF/DKIM) and set:
+   ```bash
+   RESEND_EMAIL_FROM="Basis <no-reply@yourdomain.com>"
+   ```
+
+Both better-auth hooks (`sendVerificationEmail`, `sendResetPassword`) already call the helper - no code changes needed, just the env vars. Swap Resend for another provider by editing `src/lib/email.ts` only.
+
+---
+
 ## 📜 Available scripts
 
 | Script | What it does |
@@ -185,8 +206,8 @@ Everything brand-related lives in **one file: `src/lib/app.ts`**. Edit it and th
 
 ### Product hardening (recommended next)
 
-- [x] **Email verification** - sent automatically on email signup, resend from Settings → Security (60s cooldown); in dev the link prints to the server console (no provider bundled) - swap `sendVerificationEmail` in `src/server/better-auth/config.ts` for Resend/SES/Postmark to deliver real emails
-- [x] **Forgot / reset password** - `/forgot-password` requests a one-time link (1h expiry) via `sendResetPassword` (logged to console in dev, swap for Resend/SES/Postmark); `/reset-password` consumes it and sets a new password with `revokeSessionsOnPasswordReset` (all sessions signed out) and a 60s per-email cooldown on the request endpoint
+- [x] **Email verification** - sent automatically on email signup, resend from Settings → Security (60s cooldown); sent via Resend (`src/lib/email.ts`), with a console-log fallback in dev when `RESEND_API_KEY` is unset - see the 📧 Email section above
+- [x] **Forgot / reset password** - `/forgot-password` requests a one-time link (1h expiry) via `sendResetPassword` (Resend; console-log fallback in dev); `/reset-password` consumes it and sets a new password with `revokeSessionsOnPasswordReset` (all sessions signed out) and a 60s per-email cooldown on the request endpoint
 - [ ] **Rate limiting** on auth endpoints (`/api/auth/*`, login, verifyPassword)
 - [ ] **Two-factor authentication (TOTP)**
 - [ ] **Profile pictures** (upload + storage)
@@ -197,7 +218,7 @@ Everything brand-related lives in **one file: `src/lib/app.ts`**. Edit it and th
 
 ### Nice-to-haves
 
-- [ ] Email service (transactional + password reset emails)
+- [x] Email service (transactional) - Resend wired into verification + reset hooks; still TODO: a React/JSX email template set (e.g. `react-email`) and lifecycle emails
 - [ ] Dockerfile + deployment guides
 - [ ] i18n
 

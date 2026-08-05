@@ -18,6 +18,12 @@ export const env = createEnv({
     SINGLESTORE_PASSWORD: z.string().optional(),
     SINGLESTORE_DATABASE: z.string(),
     SINGLESTORE_SSL: z.enum(["true", "false"]).default("true"),
+    // Optional: without RESEND_API_KEY, auth emails are logged to the dev
+    // console instead of sent (see src/lib/email.ts).
+    RESEND_API_KEY: z.string().optional(),
+    // Sender address. Defaults to Resend's shared test domain
+    // (onboarding@resend.dev) when unset.
+    RESEND_EMAIL_FROM: z.string().optional(),
     NODE_ENV: z
       .enum(["development", "test", "production"]) 
       .default("development"),
@@ -48,6 +54,8 @@ export const env = createEnv({
     SINGLESTORE_PASSWORD: process.env.SINGLESTORE_PASSWORD,
     SINGLESTORE_DATABASE: process.env.SINGLESTORE_DATABASE,
     SINGLESTORE_SSL: process.env.SINGLESTORE_SSL,
+    RESEND_API_KEY: process.env.RESEND_API_KEY,
+    RESEND_EMAIL_FROM: process.env.RESEND_EMAIL_FROM,
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
     NODE_ENV: process.env.NODE_ENV,
   },
