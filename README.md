@@ -126,8 +126,8 @@ src/
 
 > This boilerplate contains **no legal pages yet** — a public app needs these. Each item is a small feature on its own:
 
-- [ ] **Privacy Policy** page (`/privacy`) — what data is collected (email, name, IP, session metadata, OAuth profile), why, retention period, and user rights
-- [ ] **Terms of Service** page (`/terms`) — acceptable use, account termination, disclaimers, liability limits
+- [x] **Privacy Policy** page (`/legal/privacy`) — what data is collected (email, name, IP, session metadata, OAuth profile), why, retention period, and user rights; generic template — fill in `src/lib/legal.ts`
+- [x] **Terms of Service** page (`/legal/terms`) — acceptable use, account termination, disclaimers, liability limits; generic template — fill in `src/lib/legal.ts`
 - [x] **Cookie consent banner** — bottom banner with Accept all / Essential only / Preferences (per-category dialog); choice stored in a `cookie-consent` cookie; the better-auth session cookie plus framework/technical cookies are strictly necessary (exempt from consent) and the banner re-opens from the footer
 - [ ] **GDPR/CCPA compliance** — see the dedicated section below
 - [ ] **Age gate / minimum age notice** — 13+ (COPPA) or 16+ (GDPR) depending on your audience
@@ -155,7 +155,7 @@ src/
 
 - [x] **Data export (portability)** — Settings → Profile → Account data → “Export JSON” (a `user.exportData` tRPC query; credentials such as tokens/passwords are redacted)
 - [ ] **Records of processing** — document every data category, its purpose, legal basis, and retention period (e.g. in `docs/privacy.md`)
-- [ ] **Privacy Policy page** (`/privacy`) — the public-facing version of the above (see the legal list)
+- [x] **Privacy Policy page** (`/legal/privacy`) — the public-facing version of the above (see the legal list)
 - [x] **Cookie consent** — banner + preferences dialog shipped (footer “Cookie settings” re-opens it); future analytics/marketing code must gate on the consent cookie (`readConsent()` from `src/lib/consent.ts`)
 - [ ] **Retention & purge** — a scheduled job to delete expired sessions and (optionally) dormant accounts per your retention policy
 - [ ] **DPA / sub-processors** — confirm SingleStore's DPA and data region, disclose GitHub OAuth's data handling, and sign DPAs with anyone processing data on your behalf
