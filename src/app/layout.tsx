@@ -4,6 +4,7 @@ import '@/styles/globals.css'
 
 import { ThemeProvider } from '@/components/theme-provider'
 import { Toaster } from '@/components/ui/sonner'
+import { CookieConsent } from '@/components/cookie-consent'
 import { TRPCReactProvider } from '@/trpc/react'
 
 const geistSans = Geist({ subsets: ['latin'], variable: '--font-geist-sans' })
@@ -52,6 +53,7 @@ export default function RootLayout({
         >
           <TRPCReactProvider>{children}</TRPCReactProvider>
           <Toaster position="top-center" />
+          <CookieConsent />
         </ThemeProvider>
       </body>
     </html>

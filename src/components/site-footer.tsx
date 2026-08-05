@@ -2,6 +2,7 @@ import Link from "next/link"
 
 import { siteConfig } from "@/lib/site"
 import { Logo } from "@/components/logo"
+import { CookieSettingsLink } from "@/components/cookie-settings-link"
 
 function FooterColumn({
   title,
@@ -53,9 +54,12 @@ export function SiteFooter() {
         </div>
 
         <div className="mt-10 flex flex-col items-start justify-between gap-3 border-t border-border pt-6 text-xs text-muted-foreground sm:flex-row sm:items-center">
-          <p>
-            &copy; {new Date().getFullYear()} {siteConfig.name}. All rights
-            reserved.
+          <p className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <span>
+              &copy; {new Date().getFullYear()} {siteConfig.name}. All rights
+              reserved.
+            </span>
+            <CookieSettingsLink />
           </p>
           <p className="font-mono uppercase tracking-widest">
             {siteConfig.stack.join(" / ")}

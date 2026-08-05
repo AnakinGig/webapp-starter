@@ -29,6 +29,7 @@ Built with the [T3 Stack](https://create.t3.gg/): **Next.js 15** (App Router) ·
 **Foundations**
 - Type-safe end-to-end with **tRPC + Zod + superjson**; server env validation with `@t3-oss/env-nextjs`
 - shadcn/ui components (base-ui), light/dark/system theming, responsive layout
+- **Cookie consent banner** with a preferences dialog (GDPR/ePrivacy-ready, choice stored in a `cookie-consent` cookie)
 - CI workflow (`.github/workflows/ci.yaml`) running lint + typecheck on every push
 
 ---
@@ -127,7 +128,7 @@ src/
 
 - [ ] **Privacy Policy** page (`/privacy`) — what data is collected (email, name, IP, session metadata, OAuth profile), why, retention period, and user rights
 - [ ] **Terms of Service** page (`/terms`) — acceptable use, account termination, disclaimers, liability limits
-- [ ] **Cookie consent banner** — required for EU/UK visitors (ePrivacy + GDPR) if you set cookies beyond strictly-necessary ones (e.g. analytics)
+- [x] **Cookie consent banner** — bottom banner with Accept all / Essential only / Preferences (per-category dialog); choice stored in a `cookie-consent` cookie; the better-auth session cookie is strictly necessary and the banner re-opens from the footer
 - [ ] **GDPR/CCPA compliance** — see the dedicated section below
 - [ ] **Age gate / minimum age notice** — 13+ (COPPA) or 16+ (GDPR) depending on your audience
 
@@ -155,7 +156,7 @@ src/
 - [x] **Data export (portability)** — Settings → Profile → Account data → “Export JSON” (a `user.exportData` tRPC query; credentials such as tokens/passwords are redacted)
 - [ ] **Records of processing** — document every data category, its purpose, legal basis, and retention period (e.g. in `docs/privacy.md`)
 - [ ] **Privacy Policy page** (`/privacy`) — the public-facing version of the above (see the legal list)
-- [ ] **Cookie consent** — the session cookie is *strictly necessary* (no consent needed); the moment you add analytics or ads you need an opt-in banner
+- [x] **Cookie consent** — banner + preferences dialog shipped (footer “Cookie settings” re-opens it); future analytics/marketing code must gate on the consent cookie (`readConsent()` from `src/lib/consent.ts`)
 - [ ] **Retention & purge** — a scheduled job to delete expired sessions and (optionally) dormant accounts per your retention policy
 - [ ] **DPA / sub-processors** — confirm SingleStore's DPA and data region, disclose GitHub OAuth's data handling, and sign DPAs with anyone processing data on your behalf
 - [ ] **Breach response** — document the 72-hour notification process (EU authorities) and the person to contact
