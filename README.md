@@ -128,7 +128,7 @@ src/
 
 - [ ] **Privacy Policy** page (`/privacy`) — what data is collected (email, name, IP, session metadata, OAuth profile), why, retention period, and user rights
 - [ ] **Terms of Service** page (`/terms`) — acceptable use, account termination, disclaimers, liability limits
-- [x] **Cookie consent banner** — bottom banner with Accept all / Essential only / Preferences (per-category dialog); choice stored in a `cookie-consent` cookie; the better-auth session cookie is strictly necessary and the banner re-opens from the footer
+- [x] **Cookie consent banner** — bottom banner with Accept all / Essential only / Preferences (per-category dialog); choice stored in a `cookie-consent` cookie; the better-auth session cookie plus framework/technical cookies are strictly necessary (exempt from consent) and the banner re-opens from the footer
 - [ ] **GDPR/CCPA compliance** — see the dedicated section below
 - [ ] **Age gate / minimum age notice** — 13+ (COPPA) or 16+ (GDPR) depending on your audience
 

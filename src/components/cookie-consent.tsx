@@ -80,10 +80,10 @@ export function CookieConsent() {
                 <div className="flex items-start gap-3 sm:items-center">
                   <CookieIcon className="mt-0.5 size-5 shrink-0 text-muted-foreground sm:mt-0" />
                   <p className="text-sm leading-relaxed text-muted-foreground">
-                    We use <span className="font-medium text-foreground">essential cookies</span>{" "}
-                    to keep you signed in and remember your choices. We only use
-                    analytics or marketing cookies if you allow them — you can
-                    change this anytime.
+                    We use <span className="font-medium text-foreground">essential and technical cookies</span>{" "}
+                    to keep you signed in, remember your choices, and make the
+                    app work. We only use analytics or marketing cookies if you
+                    allow them — you can change this anytime.
                   </p>
                 </div>
                 <div className="flex shrink-0 flex-wrap items-center gap-2">
@@ -118,7 +118,8 @@ export function CookieConsent() {
               <span className="flex flex-col gap-0.5">
                 <span className="text-sm font-medium">Essential</span>
                 <span className="text-xs leading-relaxed text-muted-foreground">
-                  Keeps you signed in and remembers your consent. Always on.
+                  Keeps you signed in, remembers your consent, and keeps the
+                  app working. Always on.
                 </span>
               </span>
               <input
