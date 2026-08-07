@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { useState, useEffect, useMemo, type ComponentType } from "react"
 import {
   MoreHorizontalIcon,
@@ -132,15 +133,22 @@ export function UserManagement() {
     return () => clearTimeout(timer)
   }, [searchQuery])
 
-  const usersResult = useQuery(api.users.getMany, {
-    page,
-    pageSize: PAGE_SIZE,
-    query: debouncedQuery || undefined,
-  })
+  const { data: session, isPending: sessionPending } = authClient.useSession()
+  // While the session is missing (initial load, after sign-out, or after being
+  // demoted) the admin queries would fail server-side and useQuery throws
+  // during render, crashing the page. "skip" disables them until the caller is
+  // an admin again.
+  const signedIn = session?.user?.role === "admin"
 
-  const stats = useQuery(api.users.getStats)
+  const usersResult = useQuery(
+    api.users.getMany,
+    signedIn
+      ? { page, pageSize: PAGE_SIZE, query: debouncedQuery || undefined }
+      : "skip",
+  )
 
-  const { data: session } = authClient.useSession()
+  const stats = useQuery(api.users.getStats, signedIn ? {} : "skip")
+
   const isSelf = (userId: string) => session?.user.id === userId
 
   const createUser = useMutation(api.users.create)
@@ -153,6 +161,27 @@ export function UserManagement() {
   const totalPages = usersResult?.totalPages ?? 0
   const usersLoading = usersResult === undefined
   const statsLoading = stats === undefined
+
+  // Session confirmed gone (e.g. after sign-out): the queries are skipped, so
+  // render a fallback instead of the admin table. The layout redirects on the
+  // next navigation, but this keeps the page usable in the meantime.
+  if (!sessionPending && !signedIn) {
+    return (
+      <Empty className="py-16">
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <UsersIcon />
+          </EmptyMedia>
+          <EmptyTitle>Access required</EmptyTitle>
+          <EmptyDescription>
+            Your session has ended or you no longer have admin access. Sign
+            back in to manage users.
+          </EmptyDescription>
+        </EmptyHeader>
+        <Button render={<Link href="/login" />}>Sign in</Button>
+      </Empty>
+    )
+  }
 
   async function handleSave(
     values: DashboardUserDraft,

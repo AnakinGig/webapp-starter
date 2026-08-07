@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 
 import { authClient } from "@/lib/auth-client"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -17,6 +18,7 @@ import {
 import { CircleUserRound, LogOut, Settings, ChevronDown } from "lucide-react"
 
 export function NavUser() {
+  const router = useRouter()
   const { data: session } = authClient.useSession()
   const user = session?.user
   const isAdmin = user?.role === "admin"
@@ -82,7 +84,21 @@ export function NavUser() {
         <DropdownMenuSeparator />
         <DropdownMenuItem
           className="text-destructive focus:bg-destructive/10 focus:text-destructive"
-          onClick={() => void authClient.signOut()}
+          onClick={() => {
+            // Leave the dashboard immediately after the session is cleared so
+            // admin queries don't re-run without a token (they throw and crash
+            // the page while still mounted).
+            void authClient
+              .signOut()
+              .then(() => {
+                router.push("/")
+                router.refresh()
+              })
+              .catch(() => {
+                // If the request fails, keep the user on the page - the
+                // session is still valid and the queries keep working.
+              })
+          }}
         >
           <LogOut className="size-4" />
           Sign out
