@@ -1,5 +1,7 @@
 # AGENTS.md
 
+> **Read this first**: global UI/UX conventions live in `~/.agents/ui-ux-notes.md` (loadable as the `ui-ux` skill). Read and apply them before this file's rules, and append any new UI/UX lessons there so they carry to other projects.
+
 T3 stack app (Next.js 15 App Router + tRPC + Drizzle + Tailwind v4 + shadcn/ui) with **better-auth** replacing NextAuth, backed by **SingleStore** (see `docs/singlestore.md`). No test framework is installed. README.md is the source of truth for setup, features, and the roadmap - keep it in sync whenever a feature changes it.
 
 ## Working rules (apply to every feature)
