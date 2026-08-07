@@ -15,8 +15,7 @@ import {
   SmartphoneIcon,
 } from "lucide-react"
 
-import { authClient } from "@/server/better-auth/client"
-import { api } from "~/trpc/react"
+import { authClient } from "@/lib/auth-client"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -101,7 +100,7 @@ export function SecuritySection() {
   const [verifySent, setVerifySent] = useState(false)
   const [verifyError, setVerifyError] = useState<string | null>(null)
   const [cooldown, setCooldown] = useState(0)
-  const sendVerify = api.user.sendVerificationEmail.useMutation()
+  const [sendingVerify, setSendingVerify] = useState(false)
 
   useEffect(() => {
     if (cooldown <= 0) return
@@ -109,21 +108,38 @@ export function SecuritySection() {
     return () => clearInterval(timer)
   }, [cooldown])
 
-  function handleSendVerification() {
-    if (sendVerify.isPending || cooldown > 0) return
+  async function handleSendVerification() {
+    if (sendingVerify || cooldown > 0) return
     setVerifyError(null)
     setVerifySent(false)
-    sendVerify.mutate(undefined, {
-      onSuccess: () => {
-        setVerifySent(true)
-        setCooldown(60)
-        // The session may not carry the new flag yet - refresh for accuracy.
-        void refetchSession()
-      },
-      onError: (err) => {
-        setVerifyError(err.message)
-      },
-    })
+    setSendingVerify(true)
+    try {
+      // Proxied to the better-auth instance on Convex (rate-limited server
+      // side: 1 email per 60s per IP).
+      const res = await fetch("/api/auth/send-verification-email", {
+        method: "POST",
+      })
+      if (!res.ok) {
+        const body = (await res.json().catch(() => null)) as {
+          message?: string
+        } | null
+        throw new Error(
+          body?.message ?? "Failed to send the verification email.",
+        )
+      }
+      setVerifySent(true)
+      setCooldown(60)
+      // The session may not carry the new flag yet - refresh for accuracy.
+      void refetchSession()
+    } catch (err) {
+      setVerifyError(
+        err instanceof Error
+          ? err.message
+          : "Failed to send the verification email.",
+      )
+    } finally {
+      setSendingVerify(false)
+    }
   }
 
   const [sessions, setSessions] = useState<ClientSession[]>([])
@@ -145,8 +161,6 @@ export function SecuritySection() {
   // Tracks the latest value so a stale verifyPassword response is ignored.
   const currentPasswordRef = useRef(currentPassword)
 
-  const verifyPassword = api.user.verifyPassword.useMutation()
-
   const loadSessions = useCallback(async () => {
     setLoadingSessions(true)
     const { data, error } = await authClient.listSessions()
@@ -166,10 +180,22 @@ export function SecuritySection() {
    *  leaves the field, so the error is shown before submit. */
   async function handleCurrentBlur() {
     const value = currentPasswordRef.current
-    if (!value || verifyPassword.isPending) return
+    if (!value || checkingCurrent) return
     setCheckingCurrent(true)
     try {
-      const { valid } = await verifyPassword.mutateAsync({ password: value })
+      // Proxied to the better-auth instance on Convex (verify-password is
+      // intentionally not exposed as a client method).
+      const res = await fetch("/api/auth/verify-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: value }),
+      })
+      const body = (await res.json().catch(() => ({}))) as {
+        valid?: boolean
+        data?: { valid?: boolean }
+      }
+      const valid =
+        res.ok && (body.valid === true || body.data?.valid === true)
       if (currentPasswordRef.current !== value) return // field changed mid-check
       setCheckingCurrent(false)
       setCurrentVerified(valid)
@@ -308,10 +334,10 @@ export function SecuritySection() {
                 type="button"
                 variant="outline"
                 className="shrink-0"
-                disabled={sendVerify.isPending || cooldown > 0}
-                onClick={handleSendVerification}
+                disabled={sendingVerify || cooldown > 0}
+                onClick={() => void handleSendVerification()}
               >
-                {sendVerify.isPending
+                {sendingVerify
                   ? "Sending…"
                   : cooldown > 0
                     ? `Resend in ${cooldown}s`

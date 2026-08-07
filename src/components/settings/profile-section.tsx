@@ -5,8 +5,9 @@ import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { TriangleAlertIcon } from "lucide-react"
 
-import { authClient } from "@/server/better-auth/client"
-import { api } from "@/trpc/react"
+import { authClient } from "@/lib/auth-client"
+import { api } from "@/convex/_generated/api"
+import { useConvex, useMutation } from "convex/react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   AlertDialog,
@@ -52,14 +53,13 @@ export function ProfileSection() {
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [confirmEmail, setConfirmEmail] = useState("")
   const [deleteError, setDeleteError] = useState<string | null>(null)
-  const deleteAccount = api.user.deleteAccount.useMutation()
+  const deleteAccount = useMutation(api.users.deleteAccount)
+  const convex = useConvex()
 
   // Data export state
   const [exporting, setExporting] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
-  const exportData = api.user.exportData.useQuery(undefined, {
-    enabled: false,
-  })
+  const [deletingAccount, setDeletingAccount] = useState(false)
 
   useEffect(() => {
     if (user) setName(user.name ?? "")
@@ -92,11 +92,10 @@ export function ProfileSection() {
     setExportError(null)
     setExporting(true)
     try {
-      const res = await exportData.refetch()
-      if (res.error) throw new Error(res.error.message)
-      if (!res.data) throw new Error("No data returned.")
+      const data = await convex.query(api.users.exportData)
+      if (!data) throw new Error("No data returned.")
 
-      const blob = new Blob([JSON.stringify(res.data, null, 2)], {
+      const blob = new Blob([JSON.stringify(data, null, 2)], {
         type: "application/json",
       })
       const url = URL.createObjectURL(blob)
@@ -116,7 +115,7 @@ export function ProfileSection() {
     }
   }
 
-  function handleDelete(e: FormEvent) {
+  async function handleDelete(e: FormEvent) {
     e.preventDefault()
     if (!user) return
 
@@ -128,14 +127,16 @@ export function ProfileSection() {
     }
 
     setDeleteError(null)
-    deleteAccount.mutate(undefined, {
-      onSuccess: () => {
-        void authClient.signOut().then(() => router.push("/"))
-      },
-      onError: (err) => {
-        setDeleteError(err.message)
-      },
-    })
+    setDeletingAccount(true)
+    try {
+      await deleteAccount()
+      await authClient.signOut()
+      router.push("/")
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : "Could not delete your account.")
+    } finally {
+      setDeletingAccount(false)
+    }
   }
 
   return (
@@ -334,11 +335,11 @@ export function ProfileSection() {
                 type="submit"
                 variant="destructive"
                 disabled={
-                  deleteAccount.isPending ||
+                  deletingAccount ||
                   confirmEmail.trim().toLowerCase() !== user?.email.toLowerCase()
                 }
               >
-                {deleteAccount.isPending
+                {deletingAccount
                   ? "Deleting…"
                   : "Delete my account"}
               </Button>

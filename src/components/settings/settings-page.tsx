@@ -7,7 +7,7 @@ import {
   UserRoundIcon,
 } from "lucide-react"
 
-import { authClient } from "@/server/better-auth/client"
+import { authClient } from "@/lib/auth-client"
 import { cn } from "@/lib/utils"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { ProfileSection } from "./profile-section"

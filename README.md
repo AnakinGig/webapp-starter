@@ -2,7 +2,7 @@
 
 A production-ready **SaaS boilerplate** with accounts, roles, and an admin dashboard out of the box - so you can skip the plumbing and build your actual product.
 
-Built with the [T3 Stack](https://create.t3.gg/): **Next.js 15** (App Router) · **tRPC** · **Drizzle ORM** · **Tailwind CSS v4** + **shadcn/ui**, with **better-auth** for authentication and **SingleStore** (MySQL-compatible) as the database.
+Built with **Next.js 15** (App Router) · **Convex** (reactive backend + database) · **Tailwind CSS v4** + **shadcn/ui**, with **better-auth** for authentication (running on Convex) and **Resend** for transactional email.
 
 ---
 
@@ -15,7 +15,8 @@ Built with the [T3 Stack](https://create.t3.gg/): **Next.js 15** (App Router) ·
 - **ANSSI-style password strength meter** (pattern detection for `1234`/`qwerty`/`abcde`, repeated chars)
 - **Session management**: list active devices, sign out individual sessions or all other sessions
 - Blur-time current-password verification (server-side check) + change password
-- **Forgot / reset password** - one-time reset links (1h expiry), all sessions revoked on reset, 60s resend cooldown; in dev the link prints to the server console
+- **Forgot / reset password** - one-time reset links (1h expiry), all sessions revoked on reset, 60s rate limit; in dev the link prints to the server console
+- **Server-side rate limiting** on auth endpoints (sign-in, sign-up, reset, verification emails)
 - Inline form errors under fields (no toast spam), `aria-invalid` for accessibility
 
 **Admin dashboard (`/dashboard`, admin-only)**
@@ -25,10 +26,11 @@ Built with the [T3 Stack](https://create.t3.gg/): **Next.js 15** (App Router) ·
 
 **Settings (`/settings`, all signed-in users)**
 - GitHub-style sidebar: **Profile** (name, role, member-since) · **Appearance** (light / dark / system) · **Security** (password + sessions)
-- **Danger zone** - self-service account deletion with a type-your-email confirmation dialog; last-admin guard, cascades sessions/accounts/posts
+- **Danger zone** - self-service account deletion with a type-your-email confirmation dialog; last-admin guard, cascades sessions/accounts
 
 **Foundations**
-- Type-safe end-to-end with **tRPC + Zod + superjson**; server env validation with `@t3-oss/env-nextjs`
+- **Convex** functions for all data access - reactive `useQuery`/`useMutation` hooks (no REST/tRPC boilerplate, optimistic updates and realtime for free)
+- Server env validation with `@t3-oss/env-nextjs`; auth secrets live on the Convex deployment
 - shadcn/ui components (base-ui), light/dark/system theming, responsive layout
 - **Cookie consent banner** with a preferences dialog (GDPR/ePrivacy-ready, choice stored in a `cookie-consent` cookie)
 - CI workflow (`.github/workflows/ci.yaml`) running lint + typecheck on every push
@@ -37,20 +39,23 @@ Built with the [T3 Stack](https://create.t3.gg/): **Next.js 15** (App Router) ·
 
 ## 🚀 Quick start
 
-Prerequisites: **Node.js 20+**, **pnpm**, and a **SingleStore** instance (cloud [Helios](https://www.singlestore.com/cloud/) or local).
+Prerequisites: **Node.js 20+**, **pnpm**, and a **Convex** account (free tier - no credit card).
 
 ```bash
 # 1. Install dependencies
 pnpm install
 
-# 2. Configure environment
-cp .env.example .env
-#   → fill in your SINGLESTORE_* values (see .env.example comments)
+# 2. Link your Convex deployment (interactive - logs you in and creates
+#    a dev deployment; also writes .env.local and generates convex/_generated)
+npx convex dev
 
-# 3. Apply the database schema
-pnpm db:migrate
+# 3. Set auth/email secrets on the deployment (see .env.example)
+npx convex env set BETTER_AUTH_SECRET "$(openssl rand -base64 32)"
+npx convex env set SITE_URL "http://localhost:3000"
+npx convex env set BETTER_AUTH_GITHUB_CLIENT_ID "dummy-or-real-id"
+npx convex env set BETTER_AUTH_GITHUB_CLIENT_SECRET "dummy-or-real-secret"
 
-# 4. Run the dev server
+# 4. Run the dev server (keep `npx convex dev` running in another terminal)
 pnpm dev        # http://localhost:3000
 ```
 
@@ -58,42 +63,39 @@ pnpm dev        # http://localhost:3000
 
 ### Environment variables
 
-| Variable | Required | Notes |
+| Variable | Where | Notes |
 |---|---|---|
-| `SINGLESTORE_HOST` | ✅ | e.g. `svc-xxxx.svc.singlestore.com` (Helios) or `localhost` |
-| `SINGLESTORE_PORT` | - | default `3306` |
-| `SINGLESTORE_USER` | ✅ | |
-| `SINGLESTORE_PASSWORD` | - | optional for passwordless local instances |
-| `SINGLESTORE_DATABASE` | ✅ | |
-| `SINGLESTORE_SSL` | - | `"true"` (default, Helios) or `"false"` for local |
-| `BETTER_AUTH_SECRET` | prod | random secret (see `.env.example`) |
-| `BETTER_AUTH_URL` | ✅ | e.g. `http://localhost:3000` |
-| `BETTER_AUTH_GITHUB_CLIENT_ID` / `..._SECRET` | ✅ | dummy values pass in dev; GitHub OAuth redirect is hardcoded to `http://localhost:3000` |
-| `RESEND_API_KEY` | - | optional; unset/empty = verification & reset links are logged to the dev console (see 📧 Email section) |
-| `RESEND_EMAIL_FROM` | - | optional; defaults to Resend's shared test domain `onboarding@resend.dev` |
+| `NEXT_PUBLIC_CONVEX_URL` | `.env.local` (auto) | Written by `npx convex dev` |
+| `NEXT_PUBLIC_CONVEX_SITE_URL` | `.env.local` (auto) | Written by `npx convex dev` |
+| `NEXT_PUBLIC_APP_URL` | `.env.local` | Canonical app URL for SEO/metadata (defaults to `http://localhost:3000`) |
+| `BETTER_AUTH_SECRET` | **Convex** | `npx convex env set` |
+| `SITE_URL` | **Convex** | Auth base URL, e.g. `http://localhost:3000` |
+| `BETTER_AUTH_GITHUB_CLIENT_ID` / `..._SECRET` | **Convex** | GitHub OAuth (dummy values pass in dev) |
+| `RESEND_API_KEY` | **Convex** | Optional; unset/empty = verification & reset links are logged to the console (see 📧 Email) |
+| `RESEND_EMAIL_FROM` | **Convex** | Optional; defaults to Resend's shared test domain `onboarding@resend.dev` |
 
-New env vars must be added to both `src/env.js` and `.env.example`.
+Next.js env vars go in `src/env.js` + `.env.example`; Convex env vars are set with `npx convex env set` (dashboard for production).
 
 ---
 
 ## 📧 Email (verification & password reset)
 
-Verification and password-reset emails are sent via **Resend** (`src/lib/email.ts`). Without an API key, both hooks fall back to **printing the link to the dev console** - local flows work with zero setup, but no email is actually sent.
+Verification and password-reset emails are sent via **Resend** (`convex/email.ts`). Without an API key, both hooks fall back to **printing the link to the dev console** - local flows work with zero setup, but no email is actually sent.
 
 **To enable real emails:**
 
 1. Create a free account at [resend.com](https://resend.com) (3,000 emails/month free).
-2. Generate an API key at `resend.com/api-keys` and add it to `.env`:
+2. Generate an API key and set it on the Convex deployment:
    ```bash
-   RESEND_API_KEY="re_xxxxxxxx"
+   npx convex env set RESEND_API_KEY "re_xxxxxxxx"
    ```
 3. For **local testing** you're done - emails are sent from Resend's shared test domain `onboarding@resend.dev` and only deliver to the address you verified on your Resend account.
 4. For **production**, add your own domain in Resend (DNS verification: SPF/DKIM) and set:
    ```bash
-   RESEND_EMAIL_FROM="Basis <no-reply@yourdomain.com>"
+   npx convex env set RESEND_EMAIL_FROM "Basis <no-reply@yourdomain.com>"
    ```
 
-Both better-auth hooks (`sendVerificationEmail`, `sendResetPassword`) already call the helper - no code changes needed, just the env vars. Swap Resend for another provider by editing `src/lib/email.ts` only.
+Both better-auth hooks (`sendVerificationEmail`, `sendResetPassword`) already call the helper - no code changes needed, just the env vars. Swap Resend for another provider by editing `convex/email.ts` only.
 
 ---
 
@@ -101,35 +103,42 @@ Both better-auth hooks (`sendVerificationEmail`, `sendResetPassword`) already ca
 
 | Script | What it does |
 |---|---|
-| `pnpm dev` | Dev server (`next dev --turbo`) |
+| `pnpm dev` | Next.js dev server (`next dev --turbo`) - keep `npx convex dev` running alongside |
 | `pnpm check` | Lint + typecheck (run before finishing changes) |
 | `pnpm typecheck` / `pnpm lint` | Individually |
+| `pnpm codegen` | Regenerate `convex/_generated` types (run automatically by `npx convex dev` and `postinstall`) |
 | `pnpm format:write` / `pnpm format:check` | Prettier |
-| `pnpm db:generate` | Generate Drizzle migration SQL (no DB needed) |
-| `pnpm db:migrate` | Apply `drizzle/*.sql` migrations in order |
 | `pnpm build` / `pnpm start` | Production build / serve |
-
-> ⚠️ **Do not use `db:push` or `db:studio`** - they run introspection queries SingleStore doesn't support and abort.
 
 ---
 
 ## 🧱 Project structure
 
 ```
+convex/                 # Backend: Convex functions + better-auth component
+├── auth.ts             # authComponent + auth options: role field, first-user-admin trigger, rate limiting, GitHub OAuth
+├── schema.ts           # App tables (empty - add your domain tables here)
+├── users.ts            # Admin user CRUD, guard rails, stats, GDPR export, delete-account
+├── email.ts            # Resend helper (verification + reset emails)
+├── http.ts             # Mounts /api/auth/* on the deployment
+├── auth.config.ts      # Registers better-auth as the auth provider
+└── betterAuth/         # The better-auth component (auth tables + instance)
+    ├── auth.ts         # Codegen shim for `npx auth generate`
+    ├── schema.ts       # Auth tables (user/session/account/verification/...)
+    └── adapter.ts      # Exposes the component's adapter (create/find/update/delete)
 src/
-├── app/                 # App Router: /, /login, /register, /dashboard, /settings
-│   └── api/             # /api/auth/* (better-auth), /api/trpc/*
+├── app/                # App Router: /, /login, /register, /dashboard, /settings
+│   └── api/auth/       # /api/auth/* proxy → Convex
 ├── components/
-│   ├── ui/              # shadcn/ui primitives
-│   ├── settings/        # settings page sections (profile, appearance, security)
-│   └── dashboard/       # admin user-management UI
-├── lib/                 # shared helpers (validation, formatting)
-├── server/
-│   ├── api/             # tRPC context, procedures, routers (user, post)
-│   ├── better-auth/     # auth config, server/client helpers
-│   └── db/              # Drizzle schema + mysql2 pool
-├── trpc/                # client-side tRPC wiring
-└── env.js               # validated environment schema
+│   ├── ui/             # shadcn/ui primitives
+│   ├── settings/       # settings page sections (profile, appearance, security)
+│   └── dashboard/      # admin user-management UI
+├── lib/
+│   ├── app.ts          # App settings (brand, contact, legal) - edit this one file
+│   ├── auth-client.ts  # better-auth client (Convex plugin)
+│   ├── auth-server.ts  # Next.js server helpers (session, auth proxy)
+│   └── validation.ts   # email/password rules + ANSSI strength meter
+└── env.js              # validated Next.js env schema
 ```
 
 ---
@@ -150,11 +159,11 @@ Everything brand-related lives in **one file: `src/lib/app.ts`**. Edit it and th
 
 ## 👤 Accounts & roles
 
-- Roles: **`admin`** and **`user`** (column on the `user` table).
-- **First registered user → admin** (via a better-auth `databaseHooks` create hook); everyone else → `user`.
+- Roles: **`admin`** and **`user`** (`user.role` field in the auth component).
+- **First registered user → admin** (via a component trigger on user creation); everyone else → `user`.
 - `/dashboard` is admin-only (server-side guard - logged-out or non-admin users are redirected).
 - `/settings` is available to any signed-in user.
-- All admin user-management endpoints run behind an `adminProcedure` in tRPC; guard rails are enforced server-side, not just in the UI.
+- All admin user-management functions run behind an **admin check in Convex** (`convex/users.ts`); guard rails are enforced server-side, not just in the UI.
 
 ---
 
@@ -179,24 +188,24 @@ Everything brand-related lives in **one file: `src/lib/app.ts`**. Edit it and th
 - **Profile** - name, email, avatar image (`user` table)
 - **Auth** - hashed password + OAuth tokens/IDs (`account` table; GitHub OAuth passes name, email, avatar)
 - **Sessions** - IP address, user-agent, expiry (`session` table); powers the devices list and revoke
-- **Content** - user-generated rows such as `post` (`createdById`)
-- **Where it lives** - SingleStore (cloud; check your Helios region) + GitHub for OAuth
+- **Content** - any user-generated rows you add in `convex/schema.ts`
+- **Where it lives** - Convex (cloud; check your project's region) + GitHub for OAuth
 
 **Already handled in the code** ✅
 
-- **Erasure (right to be forgotten)** - self-service account deletion in Settings → Profile → Danger zone, cascading posts, sessions, and accounts
-- **Security (GDPR Art. 32)** - passwords hashed by better-auth, TLS required by SingleStore Helios, admin-only user management with guard rails, per-device and bulk session revocation
+- **Erasure (right to be forgotten)** - self-service account deletion in Settings → Profile → Danger zone, cascading sessions and accounts
+- **Security (GDPR Art. 32)** - passwords hashed by better-auth, TLS in transit, admin-only user management with guard rails, per-device and bulk session revocation, rate-limited auth endpoints
 - **Rectification** - name is editable in Settings → Profile (email change is a listed TODO)
-- **Portability** - JSON export of profile, sessions, connected accounts, and content in Settings → Profile → Account data (credentials redacted)
+- **Portability** - JSON export of profile, sessions, and connected accounts in Settings → Profile → Account data (credentials redacted)
 
 **Still to do** ⬜
 
-- [x] **Data export (portability)** - Settings → Profile → Account data → “Export JSON” (a `user.exportData` tRPC query; credentials such as tokens/passwords are redacted)
+- [x] **Data export (portability)** - Settings → Profile → Account data → “Export JSON” (a `users.exportData` Convex query; credentials such as tokens/passwords are redacted)
 - [ ] **Records of processing** - document every data category, its purpose, legal basis, and retention period (e.g. in `docs/privacy.md`)
 - [x] **Privacy Policy page** (`/legal/privacy`) - the public-facing version of the above (see the legal list)
 - [x] **Cookie consent** - banner + preferences dialog shipped (footer “Cookie settings” re-opens it); future analytics/marketing code must gate on the consent cookie (`readConsent()` from `src/lib/consent.ts`)
-- [ ] **Retention & purge** - a scheduled job to delete expired sessions and (optionally) dormant accounts per your retention policy
-- [ ] **DPA / sub-processors** - confirm SingleStore's DPA and data region, disclose GitHub OAuth's data handling, and sign DPAs with anyone processing data on your behalf
+- [ ] **Retention & purge** - a scheduled job (Convex cron) to delete expired sessions and (optionally) dormant accounts per your retention policy
+- [ ] **DPA / sub-processors** - confirm Convex's DPA and data region, disclose GitHub OAuth's data handling, and sign DPAs with anyone processing data on your behalf
 - [ ] **Breach response** - document the 72-hour notification process (EU authorities) and the person to contact
 - [ ] **Rights handling** - define how you answer access / rectification / erasure requests within the legal deadline (30 days)
 - [ ] **CCPA/CPRA extras** - the app does not sell personal information, so you mainly need right-to-know/delete flows plus a “Do Not Sell or Share My Personal Information” link *if* you ever add ads/analytics; never discriminate against users who exercise their rights
@@ -208,11 +217,11 @@ Everything brand-related lives in **one file: `src/lib/app.ts`**. Edit it and th
 
 ### Product hardening (recommended next)
 
-- [x] **Email verification** - sent automatically on email signup, resend from Settings → Security (60s cooldown); sent via Resend (`src/lib/email.ts`), with a console-log fallback in dev when `RESEND_API_KEY` is unset - see the 📧 Email section above
-- [x] **Forgot / reset password** - `/forgot-password` requests a one-time link (1h expiry) via `sendResetPassword` (Resend; console-log fallback in dev); `/reset-password` consumes it and sets a new password with `revokeSessionsOnPasswordReset` (all sessions signed out) and a 60s per-email cooldown on the request endpoint
-- [ ] **Rate limiting** on auth endpoints (`/api/auth/*`, login, verifyPassword)
+- [x] **Email verification** - sent automatically on email signup, resend from Settings → Security (60s rate limit); sent via Resend (`convex/email.ts`), with a console-log fallback in dev when `RESEND_API_KEY` is unset - see the 📧 Email section above
+- [x] **Forgot / reset password** - `/forgot-password` requests a one-time link (1h expiry) via `sendResetPassword` (Resend; console-log fallback in dev); `/reset-password` consumes it and sets a new password with `revokeSessionsOnPasswordReset` (all sessions signed out)
+- [x] **Rate limiting** on auth endpoints (sign-in, sign-up, password reset, verification email) - better-auth's built-in limiter backed by the Convex rateLimit table
 - [ ] **Two-factor authentication (TOTP)**
-- [ ] **Profile pictures** (upload + storage)
+- [ ] **Profile pictures** (upload + storage - Convex file storage)
 - [ ] **Audit log** of admin actions (who changed what)
 - [x] **Delete-account self-service** in Settings → Profile → Danger zone
 - [ ] **Password re-confirmation** for account deletion (stronger than typing your email, e.g. for stolen-session protection)
@@ -228,13 +237,13 @@ Everything brand-related lives in **one file: `src/lib/app.ts`**. Edit it and th
 
 ## 🚢 Deployment
 
-- Build with `pnpm build`, run with `pnpm start`.
-- Set all `SINGLESTORE_*` and `BETTER_AUTH_*` vars in your hosting environment (`SKIP_ENV_VALIDATION=1` bypasses validation during Docker builds).
-- Point `BETTER_AUTH_URL` at your production URL and update the GitHub OAuth redirect URI.
-- SingleStore-specific notes live in [`docs/singlestore.md`](docs/singlestore.md).
+1. **Deploy the backend**: `npx convex deploy` (deploys functions + schema to your production deployment).
+2. **Build & serve the frontend**: `pnpm build` then `pnpm start` (or deploy to Vercel/any Node host).
+3. Set `NEXT_PUBLIC_CONVEX_URL` / `NEXT_PUBLIC_CONVEX_SITE_URL` (production deployment URLs) in the hosting environment, and all auth/email secrets on the **production Convex deployment** via the dashboard or `npx convex env set`.
+4. Point `SITE_URL` at your production URL and update the GitHub OAuth redirect URI.
 
 ---
 
 ## 📚 Tech stack
 
-[Next.js 15](https://nextjs.org) · [tRPC](https://trpc.io) · [Drizzle ORM](https://orm.drizzle.team) · [better-auth](https://www.better-auth.com) · [SingleStore](https://www.singlestore.com) · [Tailwind CSS v4](https://tailwindcss.com) · [shadcn/ui](https://ui.shadcn.com) · [Zod](https://zod.dev) · [next-themes](https://github.com/pacocoursey/next-themes)
+[Next.js 15](https://nextjs.org) · [Convex](https://www.convex.dev) · [better-auth](https://www.better-auth.com) · [Resend](https://resend.com) · [Tailwind CSS v4](https://tailwindcss.com) · [shadcn/ui](https://ui.shadcn.com) · [Zod](https://zod.dev) · [next-themes](https://github.com/pacocoursey/next-themes)

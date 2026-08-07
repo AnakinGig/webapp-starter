@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 
-import { authClient } from "@/server/better-auth/client"
+import { authClient } from "@/lib/auth-client"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import {

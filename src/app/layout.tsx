@@ -3,10 +3,11 @@ import { Geist, Geist_Mono } from 'next/font/google'
 import '@/styles/globals.css'
 
 import { appSettings } from '@/lib/app'
+import { getToken } from '@/lib/auth-server'
 import { ThemeProvider } from '@/components/theme-provider'
+import { ConvexClientProvider } from '@/components/convex-client-provider'
 import { Toaster } from '@/components/ui/sonner'
 import { CookieConsent } from '@/components/cookie-consent'
-import { TRPCReactProvider } from '@/trpc/react'
 
 const geistSans = Geist({ subsets: ['latin'], variable: '--font-geist-sans' })
 const geistMono = Geist_Mono({ subsets: ['latin'], variable: '--font-geist-mono' })
@@ -37,11 +38,13 @@ export const viewport: Viewport = {
   ],
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  const token = await getToken()
+
   return (
     <html
       lang="en"
@@ -55,7 +58,9 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <TRPCReactProvider>{children}</TRPCReactProvider>
+          <ConvexClientProvider initialToken={token}>
+            {children}
+          </ConvexClientProvider>
           <Toaster position="top-center" />
           <CookieConsent />
         </ThemeProvider>

@@ -22,7 +22,7 @@ import {
   isValidEmail,
   passwordMeetsPolicy,
 } from "@/lib/validation"
-import { authClient } from "@/server/better-auth/client"
+import { authClient } from "@/lib/auth-client"
 
 type FieldErrors = {
   name?: string

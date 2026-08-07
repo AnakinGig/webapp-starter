@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation"
 
-import { getSession } from "@/server/better-auth/server"
+import { api } from "@/convex/_generated/api"
+import { fetchAuthQuery } from "@/lib/auth-server"
 import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
 
@@ -9,9 +10,9 @@ export default async function SettingsLayout({
 }: {
   children: React.ReactNode
 }) {
-  const session = await getSession()
+  const user = await fetchAuthQuery(api.users.getCurrentUser)
 
-  if (!session) {
+  if (!user) {
     redirect("/login")
   }
 

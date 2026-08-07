@@ -27,6 +27,7 @@
     /* Path Aliases */
     "baseUrl": ".",
     "paths": {
+      "@/convex/*": ["./convex/*"],
       "~/*": ["./src/*"],
       "@/*": ["./src/*"],
     }

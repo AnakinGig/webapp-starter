@@ -12,12 +12,13 @@ import {
   MailCheckIcon,
 } from "lucide-react"
 import { toast } from "sonner"
+import { useMutation, useQuery } from "convex/react"
 
+import { api } from "@/convex/_generated/api"
 import { UserDialog } from "@/components/dashboard/user-dialog"
 import type { DashboardUser, DashboardUserDraft } from "@/components/dashboard/types"
 import { formatDate } from "@/lib/format"
-import { api } from "~/trpc/react"
-import { authClient } from "~/server/better-auth/client"
+import { authClient } from "@/lib/auth-client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -83,6 +84,11 @@ function initials(name: string | null, email: string) {
     .join("")
 }
 
+function errorMessage(err: unknown, fallback: string): string {
+  if (err instanceof Error && err.message) return err.message
+  return fallback
+}
+
 function StatCard({
   label,
   value,
@@ -126,65 +132,66 @@ export function UserManagement() {
     return () => clearTimeout(timer)
   }, [searchQuery])
 
-  const { data, isLoading } = api.user.getMany.useQuery({
+  const usersResult = useQuery(api.users.getMany, {
     page,
     pageSize: PAGE_SIZE,
     query: debouncedQuery || undefined,
   })
 
-  const utils = api.useUtils()
+  const stats = useQuery(api.users.getStats)
 
   const { data: session } = authClient.useSession()
   const isSelf = (userId: string) => session?.user.id === userId
 
-  const invalidateUsers = () => {
-    void utils.user.getMany.invalidate()
-    void utils.user.getStats.invalidate()
+  const createUser = useMutation(api.users.create)
+  const updateUser = useMutation(api.users.update)
+  const deleteUser = useMutation(api.users.remove)
+  const [saving, setSaving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+
+  const users = useMemo(() => usersResult?.data ?? [], [usersResult])
+  const totalPages = usersResult?.totalPages ?? 0
+  const usersLoading = usersResult === undefined
+  const statsLoading = stats === undefined
+
+  async function handleSave(
+    values: DashboardUserDraft,
+    user: DashboardUser | null,
+  ) {
+    setDialogError(null)
+    setSaving(true)
+    try {
+      if (user) {
+        await updateUser({ id: user.id, ...values })
+        toast.success("User updated.")
+      } else {
+        await createUser(values)
+        toast.success("User created.")
+      }
+      setDialogOpen(false)
+      setEditing(null)
+      setDialogError(null)
+    } catch (err) {
+      // Keep the dialog open and show the error inline under the relevant
+      // field (the dialog maps known messages to fields).
+      setDialogError(errorMessage(err, "Something went wrong. Please try again."))
+    } finally {
+      setSaving(false)
+    }
   }
 
-  const createUser = api.user.create.useMutation({
-    onSuccess: () => {
-      invalidateUsers()
-      toast.success("User created.")
-      setDialogOpen(false)
-      setEditing(null)
-      setDialogError(null)
-    },
-    // Keep the dialog open and show the error inline under the relevant field.
-    onError: (err) => setDialogError(err.message),
-  })
-
-  const updateUser = api.user.update.useMutation({
-    onSuccess: () => {
-      invalidateUsers()
-      toast.success("User updated.")
-      setDialogOpen(false)
-      setEditing(null)
-      setDialogError(null)
-    },
-    onError: (err) => setDialogError(err.message),
-  })
-
-  const deleteUser = api.user.remove.useMutation({
-    onSuccess: () => {
-      invalidateUsers()
+  async function handleDelete() {
+    if (!toDelete) return
+    setDeleting(true)
+    try {
+      await deleteUser({ id: toDelete.id })
       toast.success("User removed.")
       setToDelete(null)
-    },
-    onError: (err) => toast.error(err.message),
-  })
-
-  const users = useMemo(() => data?.data ?? [], [data])
-  const totalPages = data?.totalPages ?? 0
-
-  const { data: stats, isPending: statsLoading } = api.user.getStats.useQuery()
-
-  function handleSave(values: DashboardUserDraft, user: DashboardUser | null) {
-    if (user) {
-      updateUser.mutate({ id: user.id, ...values })
-      return
+    } catch (err) {
+      toast.error(errorMessage(err, "Could not remove this user."))
+    } finally {
+      setDeleting(false)
     }
-    createUser.mutate(values)
   }
 
   function openCreate() {
@@ -230,7 +237,7 @@ export function UserManagement() {
           </div>
         </CardHeader>
         <CardContent className="p-0">
-          {isLoading ? (
+          {usersLoading ? (
             <div className="py-12">
               <div className="flex flex-col gap-3 px-6">
                 {Array.from({ length: 5 }).map((_, i) => (
@@ -393,16 +400,16 @@ export function UserManagement() {
           if (!o) setDialogError(null)
         }}
         user={editing}
-        onSave={handleSave}
+        onSave={(values, user) => void handleSave(values, user)}
         disabledRole={Boolean(editing && isSelf(editing.id))}
         error={dialogError}
         onClearError={() => setDialogError(null)}
-        pending={createUser.isPending || updateUser.isPending}
+        pending={saving}
       />
 
       <AlertDialog
         open={Boolean(toDelete)}
-        onOpenChange={(o) => !o && !deleteUser.isPending && setToDelete(null)}
+        onOpenChange={(o) => !o && !deleting && setToDelete(null)}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -420,17 +427,14 @@ export function UserManagement() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleteUser.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               variant="destructive"
               className="bg-destructive text-white hover:bg-destructive/90"
-              disabled={deleteUser.isPending}
-              onClick={() => {
-                if (!toDelete) return
-                deleteUser.mutate({ id: toDelete.id })
-              }}
+              disabled={deleting}
+              onClick={() => void handleDelete()}
             >
-              {deleteUser.isPending ? "Deleting..." : "Delete"}
+              {deleting ? "Deleting..." : "Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

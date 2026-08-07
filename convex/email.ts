@@ -1,28 +1,30 @@
 import { Resend } from "resend";
 
-import { env } from "~/env";
-import { appSettings } from "~/lib/app";
+import { appSettings } from "../src/lib/app";
 
 /**
  * Transactional email helper (verification links, password reset links).
  *
- * Uses Resend when RESEND_API_KEY is set. Without a key the helper keeps the
- * dev-friendly behavior: it prints the action link to the server console so
- * local flows stay testable with zero setup (and never leaks the link in
- * production).
+ * Runs inside Convex (the better-auth instance lives on the deployment), so
+ * it reads process.env directly - set RESEND_API_KEY / RESEND_EMAIL_FROM on
+ * the Convex deployment (`npx convex env set ...`).
+ *
+ * Without RESEND_API_KEY the helper keeps the dev-friendly behavior: it
+ * prints the action link to the function logs so local flows stay testable
+ * with zero setup (and never leaks the link in production).
  */
 let resend: Resend | null = null;
 
 function getResend(): Resend | null {
-  if (!env.RESEND_API_KEY) return null;
+  if (!process.env.RESEND_API_KEY) return null;
   // Cache the client; Resend's SDK is cheap to construct but stateless.
-  resend ??= new Resend(env.RESEND_API_KEY);
+  resend ??= new Resend(process.env.RESEND_API_KEY);
   return resend;
 }
 
 /** Sender address. Defaults to Resend's shared test domain (onboarding@resend.dev). */
 function fromAddress(): string {
-  return env.RESEND_EMAIL_FROM ?? `onboarding@resend.dev`;
+  return process.env.RESEND_EMAIL_FROM ?? "onboarding@resend.dev";
 }
 
 export async function sendActionEmail(opts: {
@@ -48,8 +50,8 @@ export async function sendActionEmail(opts: {
     }
     console.error(
       "[better-auth] Email sending is enabled but RESEND_API_KEY is not " +
-        "configured. Set it in your environment (see .env.example) so users " +
-        "receive their emails.",
+        "configured. Set it on the Convex deployment (npx convex env set " +
+        "RESEND_API_KEY ...) so users receive their emails.",
     );
     return;
   }

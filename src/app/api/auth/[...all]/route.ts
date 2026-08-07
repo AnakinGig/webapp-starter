@@ -1,5 +1,5 @@
-import { toNextJsHandler } from "better-auth/next-js";
+import { handler } from "@/lib/auth-server";
 
-import { auth } from "~/server/better-auth";
-
-export const { GET, POST } = toNextJsHandler(auth.handler);
+// Proxies every /api/auth/* request to the better-auth instance running on
+// the Convex deployment (see convex/http.ts).
+export const { GET, POST } = handler;

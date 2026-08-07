@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react"
 import Link from "next/link"
 import { MailCheckIcon, TriangleAlertIcon } from "lucide-react"
 
+import { appSettings } from "@/lib/app"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import {
@@ -14,16 +15,15 @@ import {
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { isValidEmail } from "@/lib/validation"
-import { api } from "~/trpc/react"
 
 export function ForgotPasswordForm() {
   const [email, setEmail] = useState("")
   const [emailError, setEmailError] = useState<string | null>(null)
   const [formError, setFormError] = useState<string | null>(null)
+  const [sending, setSending] = useState(false)
   const [submitted, setSubmitted] = useState(false)
-  const requestReset = api.user.requestPasswordReset.useMutation()
 
-  function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     if (email && !isValidEmail(email)) {
       setEmailError("Enter a valid email address.")
@@ -31,16 +31,38 @@ export function ForgotPasswordForm() {
     }
     setEmailError(null)
     setFormError(null)
+    setSending(true)
 
-    requestReset.mutate(
-      { email },
-      {
-        // Anti-enumeration: the success panel is identical whether or not the
-        // email has an account, so the form never reveals that.
-        onSuccess: () => setSubmitted(true),
-        onError: (err) => setFormError(err.message),
-      },
-    )
+    // Proxied to the better-auth instance on Convex. The response is
+    // identical whether or not the email has an account (anti-enumeration),
+    // and the route is rate-limited server side (1 email per 60s per IP).
+    try {
+      const res = await fetch("/api/auth/request-password-reset", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email,
+          redirectTo: `${appSettings.url}/reset-password`,
+        }),
+      })
+      if (!res.ok) {
+        const body = (await res.json().catch(() => null)) as {
+          message?: string
+        } | null
+        throw new Error(
+          body?.message ?? "Could not send a reset link. Try again.",
+        )
+      }
+      setSubmitted(true)
+    } catch (err) {
+      setFormError(
+        err instanceof Error
+          ? err.message
+          : "Could not send a reset link. Try again.",
+      )
+    } finally {
+      setSending(false)
+    }
   }
 
   if (submitted) {
@@ -102,8 +124,8 @@ export function ForgotPasswordForm() {
           />
           {emailError && <FieldError>{emailError}</FieldError>}
         </Field>
-        <Button type="submit" className="w-full" disabled={requestReset.isPending}>
-          {requestReset.isPending ? "Sending..." : "Send reset link"}
+        <Button type="submit" className="w-full" disabled={sending}>
+          {sending ? "Sending..." : "Send reset link"}
         </Button>
       </FieldGroup>
     </form>

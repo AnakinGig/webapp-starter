@@ -23,7 +23,7 @@ import {
   PASSWORD_MIN_LENGTH,
   passwordMeetsPolicy,
 } from "@/lib/validation"
-import { authClient } from "@/server/better-auth/client"
+import { authClient } from "@/lib/auth-client"
 
 export function ResetPasswordForm({
   token,

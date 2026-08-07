@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/field"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { isValidEmail } from "@/lib/validation"
-import { authClient } from "@/server/better-auth/client"
+import { authClient } from "@/lib/auth-client"
 
 export function LoginForm() {
   const router = useRouter()

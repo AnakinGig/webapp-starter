@@ -7,7 +7,7 @@ import { Logo } from "@/components/logo"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { NavUser } from "@/components/nav-user"
 import { Button } from "@/components/ui/button"
-import { authClient } from "@/server/better-auth/client"
+import { authClient } from "@/lib/auth-client"
 
 export function SiteHeader() {
   const { data: session, isPending } = authClient.useSession()

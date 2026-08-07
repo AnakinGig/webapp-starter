@@ -3,7 +3,7 @@
 import type { ReactNode } from "react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
-import { authClient } from "@/server/better-auth/client"
+import { authClient } from "@/lib/auth-client"
 
 type Provider = "google" | "github" | "discord"
 
