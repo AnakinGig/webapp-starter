@@ -10,7 +10,10 @@ import { Button } from "@/components/ui/button"
 import { authClient } from "@/lib/auth-client"
 
 export function SiteHeader() {
-  const { data: session, isPending } = authClient.useSession()
+  // Default to the signed-out buttons while the session is loading so the
+  // header never shows empty placeholders. The profile menu appears only once
+  // the backend confirms there is a session.
+  const { data: session } = authClient.useSession()
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-border bg-background/80 backdrop-blur-md">
@@ -31,16 +34,7 @@ export function SiteHeader() {
 
         <div className="flex items-center gap-1.5">
           <ThemeToggle />
-          {isPending ? (
-            <div className="flex items-center gap-1.5">
-              <Button variant="ghost" size="sm" disabled>
-                <span className="sr-only">Loading</span>
-              </Button>
-              <Button size="sm" disabled>
-                <span className="sr-only">Loading</span>
-              </Button>
-            </div>
-          ) : session ? (
+          {session ? (
             <NavUser />
           ) : (
             <div className="flex items-center gap-1.5">

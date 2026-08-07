@@ -2,6 +2,7 @@ import { redirect } from "next/navigation"
 
 import { api } from "@/convex/_generated/api"
 import { fetchAuthQuery } from "@/lib/auth-server"
+import { DashboardAuthBoundary } from "@/components/dashboard/dashboard-auth-boundary"
 import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
 
@@ -19,7 +20,9 @@ export default async function DashboardLayout({
   return (
     <div className="flex min-h-svh flex-col">
       <SiteHeader />
-      <main className="flex-1">{children}</main>
+      <main className="flex-1">
+        <DashboardAuthBoundary>{children}</DashboardAuthBoundary>
+      </main>
       <SiteFooter />
     </div>
   )
