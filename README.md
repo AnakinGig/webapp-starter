@@ -71,8 +71,9 @@ pnpm dev        # http://localhost:3000
 | `BETTER_AUTH_SECRET` | **Convex** | `npx convex env set` |
 | `SITE_URL` | **Convex** | Auth base URL, e.g. `http://localhost:3000` |
 | `BETTER_AUTH_GITHUB_CLIENT_ID` / `..._SECRET` | **Convex** | GitHub OAuth (dummy values pass in dev) |
-| `RESEND_API_KEY` | **Convex** | Optional; unset/empty = verification & reset links are logged to the console (see 📧 Email) |
+| `RESEND_API_KEY` | **Convex** | Optional; unset/empty = verification & reset links are logged to the function logs (see 📧 Email) |
 | `RESEND_EMAIL_FROM` | **Convex** | Optional; defaults to Resend's shared test domain `onboarding@resend.dev` |
+| `ENVIRONMENT` | **Convex** | `"production"` on the production deployment only; anything else (or unset) = dev. Controls whether a missing `RESEND_API_KEY` logs the link (dev) or a safe error (prod). NOT `NODE_ENV` - Convex sets that to `"production"` everywhere |
 
 Next.js env vars go in `src/env.js` + `.env.example`; Convex env vars are set with `npx convex env set` (dashboard for production).
 
@@ -80,7 +81,9 @@ Next.js env vars go in `src/env.js` + `.env.example`; Convex env vars are set wi
 
 ## 📧 Email (verification & password reset)
 
-Verification and password-reset emails are sent via **Resend** (`convex/email.ts`). Without an API key, both hooks fall back to **printing the link to the dev console** - local flows work with zero setup, but no email is actually sent.
+Verification and password-reset emails are sent via **Resend** (`convex/email.ts`). Without an API key, both hooks fall back to **printing the link to the function logs** - local flows work with zero setup, but no email is actually sent.
+
+**Dev vs prod is decided by the `ENVIRONMENT` variable, not `NODE_ENV`** - Convex runs every deployment (even dev ones) with `NODE_ENV=production`, so that check would always take the "production" path. With `ENVIRONMENT` unset (the default) a missing `RESEND_API_KEY` prints the action link to the logs; set `ENVIRONMENT=production` on the production deployment so a missing key logs a clear error instead of leaking the token-bearing link.
 
 **To enable real emails:**
 
@@ -93,6 +96,7 @@ Verification and password-reset emails are sent via **Resend** (`convex/email.ts
 4. For **production**, add your own domain in Resend (DNS verification: SPF/DKIM) and set:
    ```bash
    npx convex env set RESEND_EMAIL_FROM "Basis <no-reply@yourdomain.com>"
+   npx convex env set ENVIRONMENT "production"
    ```
 
 Both better-auth hooks (`sendVerificationEmail`, `sendResetPassword`) already call the helper - no code changes needed, just the env vars. Swap Resend for another provider by editing `convex/email.ts` only.
@@ -239,7 +243,7 @@ Everything brand-related lives in **one file: `src/lib/app.ts`**. Edit it and th
 
 1. **Deploy the backend**: `npx convex deploy` (deploys functions + schema to your production deployment).
 2. **Build & serve the frontend**: `pnpm build` then `pnpm start` (or deploy to Vercel/any Node host).
-3. Set `NEXT_PUBLIC_CONVEX_URL` / `NEXT_PUBLIC_CONVEX_SITE_URL` (production deployment URLs) in the hosting environment, and all auth/email secrets on the **production Convex deployment** via the dashboard or `npx convex env set`.
+3. Set `NEXT_PUBLIC_CONVEX_URL` / `NEXT_PUBLIC_CONVEX_SITE_URL` (production deployment URLs) in the hosting environment, and all auth/email secrets on the **production Convex deployment** via the dashboard or `npx convex env set` (including `ENVIRONMENT=production` - see 📧 Email).
 4. Point `SITE_URL` at your production URL and update the GitHub OAuth redirect URI.
 
 ---

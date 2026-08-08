@@ -12,7 +12,22 @@ import { appSettings } from "../src/lib/app";
  * Without RESEND_API_KEY the helper keeps the dev-friendly behavior: it
  * prints the action link to the function logs so local flows stay testable
  * with zero setup (and never leaks the link in production).
+ *
+ * Dev vs prod is detected via the explicit `ENVIRONMENT` deployment variable
+ * ("production" = production, anything else = dev), NOT `NODE_ENV`: Convex
+ * always sets NODE_ENV to "production", even on dev deployments, so it can't
+ * distinguish the two.
  */
+
+/**
+ * True only when the deployment explicitly declares itself production via the
+ * `ENVIRONMENT` env var. Convex sets NODE_ENV to "production" on every
+ * deployment (dev and prod alike), so dev/prod is signaled with
+ * `npx convex env set ENVIRONMENT production` on the production deployment.
+ */
+function isProduction(): boolean {
+  return process.env.ENVIRONMENT === "production";
+}
 let resend: Resend | null = null;
 
 function getResend(): Resend | null {
@@ -42,7 +57,7 @@ export async function sendActionEmail(opts: {
     // No provider configured. Dev: log the link (testable without setup).
     // Prod: log a clear error WITHOUT the link - the URL embeds a secret
     // token and must never reach the logs.
-    if (process.env.NODE_ENV !== "production") {
+    if (!isProduction()) {
       console.log(
         `[better-auth] ${subject} for ${to} (no email provider, dev log):\n${ctaUrl}`,
       );
