@@ -128,6 +128,9 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) => {
     },
 
     emailVerification: {
+      // Send a verification email on every email signup. In dev (no
+      // RESEND_API_KEY) the link is printed to the function logs instead.
+      sendOnSignUp: true,
       // Sign-ins stay open for unverified accounts by default. To require
       // verification before signing in, uncomment the next line:
       // requireEmailVerification: true,
