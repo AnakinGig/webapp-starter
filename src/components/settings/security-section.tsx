@@ -110,14 +110,19 @@ export function SecuritySection() {
 
   async function handleSendVerification() {
     if (sendingVerify || cooldown > 0) return
+    const email = session?.user?.email
+    if (!email) return // session still loading - nothing to send to
     setVerifyError(null)
     setVerifySent(false)
     setSendingVerify(true)
     try {
       // Proxied to the better-auth instance on Convex (rate-limited server
-      // side: 1 email per 60s per IP).
+      // side: 1 email per 60s per IP). The route requires a JSON body with
+      // the email - the session is the source of truth for it.
       const res = await fetch("/api/auth/send-verification-email", {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
       })
       if (!res.ok) {
         const body = (await res.json().catch(() => null)) as {
