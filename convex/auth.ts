@@ -61,6 +61,23 @@ export const authComponent = createClient<DataModel, typeof authSchema>(
  * secrets come from Convex env vars (set with `npx convex env set ...`),
  * not from the Next.js .env.
  */
+/**
+ * Better-auth builds the reset link as /reset-password/:token?callbackURL=...
+ * When the request omits `redirectTo`, the callbackURL is left EMPTY and
+ * clicking the link bounces to an INVALID_TOKEN error page (the callback
+ * route requires a non-empty callbackURL). Make the link always carry a valid
+ * callbackURL so it works no matter how the reset was requested - the app
+ * form passes redirectTo, but e.g. a direct API call or a dev-console test
+ * does not.
+ */
+function ensureResetCallbackUrl(url: string, siteUrl: string): string {
+  const parsed = new URL(url);
+  if (!parsed.searchParams.get("callbackURL")) {
+    parsed.searchParams.set("callbackURL", `${siteUrl}/reset-password`);
+  }
+  return parsed.toString();
+}
+
 export const createAuthOptions = (ctx: GenericCtx<DataModel>) => {
   const siteUrl = process.env.SITE_URL ?? "http://localhost:3000";
 
@@ -105,7 +122,7 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) => {
           heading: "Reset your password",
           body: "We received a request to reset your password. Click the button below to choose a new one.",
           ctaLabel: "Reset password",
-          ctaUrl: url,
+          ctaUrl: ensureResetCallbackUrl(url, siteUrl),
         });
       },
     },
