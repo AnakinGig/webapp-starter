@@ -39,6 +39,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import { formatDate } from "@/lib/format"
+import { sendVerificationEmail } from "@/lib/send-verification"
 import { isValidEmail } from "@/lib/validation"
 
 export function ProfileSection() {
@@ -55,6 +56,18 @@ export function ProfileSection() {
   const [emailError, setEmailError] = useState<string | null>(null)
   const [emailSent, setEmailSent] = useState(false)
   const [sendingEmail, setSendingEmail] = useState(false)
+
+  // Resend-verification state (email change requires a verified email)
+  const [sendingVerify, setSendingVerify] = useState(false)
+  const [verifySent, setVerifySent] = useState(false)
+  const [verifyCooldown, setVerifyCooldown] = useState(0)
+  const [verifyError, setVerifyError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (verifyCooldown <= 0) return
+    const timer = setInterval(() => setVerifyCooldown((c) => c - 1), 1000)
+    return () => clearInterval(timer)
+  }, [verifyCooldown])
 
   // Danger zone state
   const [deleteOpen, setDeleteOpen] = useState(false)
@@ -73,6 +86,7 @@ export function ProfileSection() {
   }, [user])
 
   const isAdmin = user?.role === "admin"
+  const isVerified = user?.emailVerified === true
   const initial = (user?.name ?? user?.email ?? "U").charAt(0).toUpperCase()
   const isUnchanged = !name.trim() || name.trim() === (user?.name ?? "")
 
@@ -85,6 +99,27 @@ export function ProfileSection() {
       return "This is already your current email address."
     }
     return null
+  }
+
+  // Send the verification email for the CURRENT address (blocked before
+  // email change). Mirrors Settings -> Security; proxied to the better-auth
+  // instance, rate-limited server-side (1 per 60s).
+  async function handleSendVerification() {
+    if (sendingVerify || verifyCooldown > 0 || !user?.email) return
+    setVerifyError(null)
+    setVerifySent(false)
+    setSendingVerify(true)
+    try {
+      await sendVerificationEmail(user.email)
+      setVerifySent(true)
+      setVerifyCooldown(60)
+    } catch (err) {
+      setVerifyError(
+        err instanceof Error ? err.message : "Failed to send the verification email.",
+      )
+    } finally {
+      setSendingVerify(false)
+    }
   }
 
   async function handleEmailChange() {
@@ -236,51 +271,96 @@ export function ProfileSection() {
 
               <Field>
                 <FieldLabel htmlFor="settings-new-email">Email</FieldLabel>
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
-                  <Input
-                    id="settings-new-email"
-                    type="email"
-                    value={newEmail}
-                    onChange={(e) => {
-                      setNewEmail(e.target.value)
-                      setEmailError(null)
-                      setEmailSent(false)
-                    }}
-                    onBlur={() => {
-                      const err = validateNewEmail()
-                      if (err) setEmailError(err)
-                    }}
-                    placeholder={user?.email ?? "new@example.com"}
-                    autoComplete="email"
-                    autoCapitalize="none"
-                    spellCheck={false}
-                    aria-invalid={Boolean(emailError)}
-                    className="sm:max-w-xs"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={sendingEmail}
-                    onClick={() => void handleEmailChange()}
-                  >
-                    {sendingEmail ? "Sending…" : "Change email"}
-                  </Button>
-                </div>
-                <FieldDescription>
-                  We&apos;ll email a confirmation link to your current address,
-                  then a verification link to the new one. Your email only
-                  changes after you verify the new address.
-                </FieldDescription>
-                {emailError && <FieldError>{emailError}</FieldError>}
-                {emailSent && (
-                  <p
-                    role="status"
-                    className="text-sm font-normal text-emerald-600 dark:text-emerald-500"
-                  >
-                    If this email isn&apos;t already in use, a confirmation
-                    link is on its way - follow the links in your emails to
-                    finish the change.
-                  </p>
+                {isVerified ? (
+                  <>
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
+                      <Input
+                        id="settings-new-email"
+                        type="email"
+                        value={newEmail}
+                        onChange={(e) => {
+                          setNewEmail(e.target.value)
+                          setEmailError(null)
+                          setEmailSent(false)
+                        }}
+                        onBlur={() => {
+                          const err = validateNewEmail()
+                          if (err) setEmailError(err)
+                        }}
+                        placeholder={user?.email ?? "new@example.com"}
+                        autoComplete="email"
+                        autoCapitalize="none"
+                        spellCheck={false}
+                        aria-invalid={Boolean(emailError)}
+                        className="sm:max-w-xs"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={sendingEmail}
+                        onClick={() => void handleEmailChange()}
+                      >
+                        {sendingEmail ? "Sending…" : "Change email"}
+                      </Button>
+                    </div>
+                    <FieldDescription>
+                      We&apos;ll email a verification link to the new address.
+                      Your email only changes after you verify it.
+                    </FieldDescription>
+                    {emailError && <FieldError>{emailError}</FieldError>}
+                    {emailSent && (
+                      <p
+                        role="status"
+                        className="text-sm font-normal text-emerald-600 dark:text-emerald-500"
+                      >
+                        If this email isn&apos;t already in use, a verification
+                        link is on its way - follow it to finish the change.
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <div className="flex flex-col gap-3 rounded-lg border border-border bg-muted/30 p-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium">
+                          {user?.email ?? "-"}
+                        </p>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          Verify your current email before changing it. A
+                          verification link will be sent to this address.
+                        </p>
+                        {verifyError && (
+                          <p
+                            role="alert"
+                            className="mt-2 text-sm text-destructive"
+                          >
+                            {verifyError}
+                          </p>
+                        )}
+                        {verifySent && (
+                          <p
+                            role="status"
+                            className="mt-2 text-sm text-emerald-600 dark:text-emerald-500"
+                          >
+                            Verification link sent - check your inbox.
+                          </p>
+                        )}
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="shrink-0"
+                        disabled={sendingVerify || verifyCooldown > 0}
+                        onClick={() => void handleSendVerification()}
+                      >
+                        {sendingVerify
+                          ? "Sending…"
+                          : verifyCooldown > 0
+                            ? `Resend in ${verifyCooldown}s`
+                            : "Send verification email"}
+                      </Button>
+                    </div>
+                  </>
                 )}
               </Field>
 

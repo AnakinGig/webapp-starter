@@ -2,7 +2,8 @@ import { createClient, type AuthFunctions } from "@convex-dev/better-auth";
 import type { GenericCtx } from "@convex-dev/better-auth/utils";
 import { convex } from "@convex-dev/better-auth/plugins";
 import type { BetterAuthOptions } from "better-auth";
-import { betterAuth } from "better-auth";
+import { APIError, betterAuth } from "better-auth";
+import { getSessionFromCtx } from "better-auth/api";
 
 import { components, internal } from "./_generated/api";
 import type { DataModel } from "./_generated/dataModel";
@@ -100,25 +101,44 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) => {
           input: false,
         },
       },
-      // Change email with verification. The built-in flow never applies the
-      // change upfront: the confirmation email goes to the CURRENT address
-      // (the account owner proves they initiated the change), then better-auth
-      // emails a verification link to the NEW address and only updates the
-      // account when that link is clicked - so the new email is verified
-      // before it takes effect. Prevents a hijacked session from redirecting
-      // the account to an email the attacker controls.
+      // Change email with verification. Only the NEW address gets a
+      // verification link (sent via the existing `sendVerificationEmail`
+      // hook); the email updates only when that link is clicked. The
+      // `hooks.before` guard below blocks the endpoint unless the CURRENT
+      // email is already verified, so an unverified address can't be swapped
+      // for another one.
       changeEmail: {
         enabled: true,
-        sendChangeEmailConfirmation: async ({ user, newEmail, url }) => {
-          await sendActionEmail({
-            to: user.email,
-            subject: "Confirm your email change",
-            heading: "Confirm your email change",
-            body: `You requested to change your email to ${newEmail}. Click the button below to confirm the change. A verification link will then be sent to the new address - your email only changes once you verify it.`,
-            ctaLabel: "Confirm email change",
-            ctaUrl: url,
-          });
-        },
+      },
+    },
+
+    // Global request hooks. Only used to guard /change-email: the current
+    // email must be verified before it can be changed. Enforced server-side
+    // here (the endpoint itself doesn't require it) and mirrored in the UI.
+    // The before hook runs before the endpoint's session middleware, so the
+    // session is resolved explicitly with getSessionFromCtx (reads the request
+    // cookies and the session store). The typed middleware context is narrow;
+    // the runtime context carries the endpoint `path` (dispatch.mjs sets it
+    // before running hooks), so the path is read via a minimal cast.
+    hooks: {
+      before: async (ctx) => {
+        const runtime = ctx as unknown as { path?: string };
+        if (runtime.path === "/change-email") {
+          const session = await getSessionFromCtx(
+            ctx as unknown as Parameters<typeof getSessionFromCtx>[0],
+          );
+          if (!session) {
+            throw APIError.fromStatus("UNAUTHORIZED", {
+              message: "Sign in to change your email.",
+            });
+          }
+          if (session.user.emailVerified !== true) {
+            throw APIError.fromStatus("BAD_REQUEST", {
+              message:
+                "Verify your current email address before changing it. Check Settings -> Security to resend the verification email.",
+            });
+          }
+        }
       },
     },
 

@@ -16,7 +16,7 @@ Built with **Next.js 15** (App Router) · **Convex** (reactive backend + databas
 - **Session management**: list active devices, sign out individual sessions or all other sessions
 - Blur-time current-password verification (server-side check) + change password
 - **Forgot / reset password** - one-time reset links (1h expiry), all sessions revoked on reset, 60s rate limit; in dev the link prints to the server console
-- **Email change with verification** - a confirmation link goes to your current address, then a verification link to the new one; the email only changes once the new address is verified (60s rate limit)
+- **Email change with verification** - the current email must be verified first (blocked otherwise, with an inline "send verification email" action); then a single verification link goes to the new address and the email only changes once it is verified (60s rate limit)
 - **Server-side rate limiting** on auth endpoints (sign-in, sign-up, reset, verification emails)
 - Inline form errors under fields (no toast spam), `aria-invalid` for accessibility
 
@@ -200,7 +200,7 @@ Everything brand-related lives in **one file: `src/lib/app.ts`**. Edit it and th
 
 - **Erasure (right to be forgotten)** - self-service account deletion in Settings → Profile → Danger zone, cascading sessions and accounts
 - **Security (GDPR Art. 32)** - passwords hashed by better-auth, TLS in transit, admin-only user management with guard rails, per-device and bulk session revocation, rate-limited auth endpoints
-- **Rectification** - name is editable in Settings → Profile; email changes are verified: a confirmation link goes to the current address, then a verification link to the new one - the email only updates once the new address is verified
+- **Rectification** - name is editable in Settings → Profile; email changes require the current email to be verified first, then a single verification link goes to the new address - the email only updates once the new address is verified
 - **Portability** - JSON export of profile, sessions, and connected accounts in Settings → Profile → Account data (credentials redacted)
 
 **Still to do** ⬜
@@ -223,7 +223,7 @@ Everything brand-related lives in **one file: `src/lib/app.ts`**. Edit it and th
 ### Product hardening (recommended next)
 
 - [x] **Email verification** - sent automatically on email signup, resend from Settings → Security (60s rate limit); sent via Resend (`convex/email.ts`), with a console-log fallback in dev when `RESEND_API_KEY` is unset - see the 📧 Email section above
-- [x] **Email change with verification** - Settings → Profile: confirmation link to the current address, then a verification link to the new one; the email only changes after the new address is verified (60s rate limit)
+- [x] **Email change with verification** - Settings → Profile: the current email must be verified before it can be changed (blocked with an inline resend-verification action otherwise); then a single verification link goes to the new address and the email only changes after it is verified (60s rate limit)
 - [x] **Forgot / reset password** - `/forgot-password` requests a one-time link (1h expiry) via `sendResetPassword` (Resend; console-log fallback in dev); `/reset-password` consumes it and sets a new password with `revokeSessionsOnPasswordReset` (all sessions signed out)
 - [x] **Rate limiting** on auth endpoints (sign-in, sign-up, password reset, verification email) - better-auth's built-in limiter backed by the Convex rateLimit table
 - [ ] **Two-factor authentication (TOTP)**

@@ -38,6 +38,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Spinner } from "@/components/ui/spinner"
 import { PasswordStrengthMeter } from "@/components/password-strength"
 import { formatDate } from "@/lib/format"
+import { sendVerificationEmail } from "@/lib/send-verification"
 import {
   PASSWORD_MIN_LENGTH,
   passwordMeetsPolicy,
@@ -116,22 +117,7 @@ export function SecuritySection() {
     setVerifySent(false)
     setSendingVerify(true)
     try {
-      // Proxied to the better-auth instance on Convex (rate-limited server
-      // side: 1 email per 60s per IP). The route requires a JSON body with
-      // the email - the session is the source of truth for it.
-      const res = await fetch("/api/auth/send-verification-email", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-      })
-      if (!res.ok) {
-        const body = (await res.json().catch(() => null)) as {
-          message?: string
-        } | null
-        throw new Error(
-          body?.message ?? "Failed to send the verification email.",
-        )
-      }
+      await sendVerificationEmail(email)
       setVerifySent(true)
       setCooldown(60)
       // The session may not carry the new flag yet - refresh for accuracy.
