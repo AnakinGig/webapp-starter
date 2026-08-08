@@ -100,6 +100,26 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) => {
           input: false,
         },
       },
+      // Change email with verification. The built-in flow never applies the
+      // change upfront: the confirmation email goes to the CURRENT address
+      // (the account owner proves they initiated the change), then better-auth
+      // emails a verification link to the NEW address and only updates the
+      // account when that link is clicked - so the new email is verified
+      // before it takes effect. Prevents a hijacked session from redirecting
+      // the account to an email the attacker controls.
+      changeEmail: {
+        enabled: true,
+        sendChangeEmailConfirmation: async ({ user, newEmail, url }) => {
+          await sendActionEmail({
+            to: user.email,
+            subject: "Confirm your email change",
+            heading: "Confirm your email change",
+            body: `You requested to change your email to ${newEmail}. Click the button below to confirm the change. A verification link will then be sent to the new address - your email only changes once you verify it.`,
+            ctaLabel: "Confirm email change",
+            ctaUrl: url,
+          });
+        },
+      },
     },
 
     emailAndPassword: {
@@ -165,6 +185,7 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) => {
         "/sign-up/email": { window: 60, max: 5 },
         "/request-password-reset": { window: 60, max: 1 },
         "/send-verification-email": { window: 60, max: 1 },
+        "/change-email": { window: 60, max: 1 },
       },
     },
 

@@ -39,6 +39,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import { formatDate } from "@/lib/format"
+import { isValidEmail } from "@/lib/validation"
 
 export function ProfileSection() {
   const router = useRouter()
@@ -48,6 +49,12 @@ export function ProfileSection() {
   const [name, setName] = useState("")
   const [saving, setSaving] = useState(false)
   const [nameError, setNameError] = useState<string | null>(null)
+
+  // Change email state
+  const [newEmail, setNewEmail] = useState("")
+  const [emailError, setEmailError] = useState<string | null>(null)
+  const [emailSent, setEmailSent] = useState(false)
+  const [sendingEmail, setSendingEmail] = useState(false)
 
   // Danger zone state
   const [deleteOpen, setDeleteOpen] = useState(false)
@@ -68,6 +75,46 @@ export function ProfileSection() {
   const isAdmin = user?.role === "admin"
   const initial = (user?.name ?? user?.email ?? "U").charAt(0).toUpperCase()
   const isUnchanged = !name.trim() || name.trim() === (user?.name ?? "")
+
+  // Front validation for the new email (fast feedback; the server re-validates).
+  function validateNewEmail(): string | null {
+    const trimmed = newEmail.trim()
+    if (!trimmed) return null
+    if (!isValidEmail(trimmed)) return "Enter a valid email address."
+    if (trimmed.toLowerCase() === (user?.email ?? "").toLowerCase()) {
+      return "This is already your current email address."
+    }
+    return null
+  }
+
+  async function handleEmailChange() {
+    const trimmed = newEmail.trim()
+    if (!trimmed) {
+      setEmailError("Enter your new email address.")
+      return
+    }
+    const frontError = validateNewEmail()
+    if (frontError) {
+      setEmailError(frontError)
+      return
+    }
+
+    setEmailError(null)
+    setEmailSent(false)
+    setSendingEmail(true)
+    const { error } = await authClient.changeEmail({
+      newEmail: trimmed,
+      callbackURL: "/settings",
+    })
+    setSendingEmail(false)
+
+    if (error) {
+      setEmailError(error.message ?? "Couldn't send the confirmation email.")
+      return
+    }
+    setNewEmail("")
+    setEmailSent(true)
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -188,17 +235,53 @@ export function ProfileSection() {
               </Field>
 
               <Field>
-                <FieldLabel htmlFor="settings-email">Email</FieldLabel>
-                <Input
-                  id="settings-email"
-                  type="email"
-                  value={user?.email ?? ""}
-                  readOnly
-                  tabIndex={-1}
-                />
+                <FieldLabel htmlFor="settings-new-email">Email</FieldLabel>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
+                  <Input
+                    id="settings-new-email"
+                    type="email"
+                    value={newEmail}
+                    onChange={(e) => {
+                      setNewEmail(e.target.value)
+                      setEmailError(null)
+                      setEmailSent(false)
+                    }}
+                    onBlur={() => {
+                      const err = validateNewEmail()
+                      if (err) setEmailError(err)
+                    }}
+                    placeholder={user?.email ?? "new@example.com"}
+                    autoComplete="email"
+                    autoCapitalize="none"
+                    spellCheck={false}
+                    aria-invalid={Boolean(emailError)}
+                    className="sm:max-w-xs"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={sendingEmail}
+                    onClick={() => void handleEmailChange()}
+                  >
+                    {sendingEmail ? "Sending…" : "Change email"}
+                  </Button>
+                </div>
                 <FieldDescription>
-                  Changing your email isn&apos;t supported yet.
+                  We&apos;ll email a confirmation link to your current address,
+                  then a verification link to the new one. Your email only
+                  changes after you verify the new address.
                 </FieldDescription>
+                {emailError && <FieldError>{emailError}</FieldError>}
+                {emailSent && (
+                  <p
+                    role="status"
+                    className="text-sm font-normal text-emerald-600 dark:text-emerald-500"
+                  >
+                    If this email isn&apos;t already in use, a confirmation
+                    link is on its way - follow the links in your emails to
+                    finish the change.
+                  </p>
+                )}
               </Field>
 
               <Separator />
