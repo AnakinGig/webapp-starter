@@ -94,14 +94,6 @@ export function CommandPaletteProvider({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
-  // Focus the search input as soon as the palette mounts.
-  React.useEffect(() => {
-    if (open) {
-      const t = window.setTimeout(() => inputRef.current?.focus(), 0);
-      return () => window.clearTimeout(t);
-    }
-  }, [open]);
-
   const go = React.useCallback(
     (href: string) => () => {
       setOpen(false);
@@ -258,7 +250,10 @@ export function CommandPaletteProvider({
       <Dialog.Root open={open} onOpenChange={setOpen}>
         <Dialog.Portal>
           <Dialog.Backdrop className="data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0 fixed inset-0 z-50 bg-black/40 backdrop-blur-xs duration-100" />
-          <Dialog.Popup className="bg-popover text-popover-foreground ring-foreground/10 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95 fixed top-[12vh] left-1/2 z-50 w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 overflow-hidden rounded-xl border shadow-xl ring-1 duration-100 outline-none">
+          <Dialog.Popup
+            initialFocus={inputRef}
+            className="bg-popover text-popover-foreground ring-foreground/10 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95 fixed top-[12vh] left-1/2 z-50 w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 overflow-hidden rounded-xl border shadow-xl ring-1 duration-100 outline-none"
+          >
             <Combobox.Root
               items={groups}
               onValueChange={(value: CommandItem | null) => {
