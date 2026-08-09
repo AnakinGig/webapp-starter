@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Cropper, { type Area, type Point } from "react-easy-crop";
 import { LoaderCircle, Minus, Plus, RotateCcw, RotateCw } from "lucide-react";
 
@@ -18,6 +18,8 @@ const PREVIEW_SIZE = 64; // px - mini live preview of the crop
 const EXPORT_SIZE = 512; // px - exported square avatar
 const MAX_ZOOM = 6;
 const ROTATION_STEP = 90;
+const MAX_BOX_SIDE = 288; // px - the editor frame never exceeds this
+const MIN_BOX_SIDE = 64; // px - ...and never gets thinner than this
 
 type Size = { width: number; height: number };
 
@@ -130,6 +132,25 @@ export function AvatarCropDialog({
     setPixelCrop(pixels);
   }, []);
 
+  // The editor box hugs the image's own aspect ratio so there are no gray
+  // bars around it at 0/180 degrees. Extreme aspect ratios (panoramas,
+  // posters) still get a usable box via the MIN_BOX_SIDE floor. Note: on
+  // 90/270-degree rotation the image rotates in place inside this box
+  // (react-easy-crop contain-fits the media, then rotates it) - the crop
+  // frame stays fully covered and the export is correct, so the box must
+  // NOT be swapped to the rotated ratio (that would letterbox it).
+  const boxSize = useMemo(() => {
+    if (!natural) return null;
+    const scale = Math.min(
+      MAX_BOX_SIDE / natural.width,
+      MAX_BOX_SIDE / natural.height,
+    );
+    const width = Math.max(natural.width * scale, MIN_BOX_SIDE);
+    const height = Math.max(natural.height * scale, MIN_BOX_SIDE);
+    return { width, height };
+  }, [natural]);
+  const box = boxSize ?? { width: MAX_BOX_SIDE, height: MAX_BOX_SIDE };
+
   // Live mini preview mirrors the crop (same math at PREVIEW_SIZE).
   useEffect(() => {
     const ctx = previewRef.current?.getContext("2d");
@@ -216,7 +237,10 @@ export function AvatarCropDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="bg-muted/50 relative mx-auto h-72 w-72 touch-none overflow-hidden rounded-xl select-none">
+        <div
+          className="bg-muted/50 relative mx-auto touch-none overflow-hidden rounded-xl select-none"
+          style={{ width: box.width, height: box.height }}
+        >
           {imageUrl && (
             <Cropper
               image={imageUrl}
