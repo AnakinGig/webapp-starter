@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation } from "convex/react";
 import { type GenericId } from "convex/values";
 import { ImagePlus, LoaderCircle, Trash2 } from "lucide-react";
@@ -8,6 +8,8 @@ import { ImagePlus, LoaderCircle, Trash2 } from "lucide-react";
 import { api } from "@/convex/_generated/api";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { AvatarCropDialog } from "./avatar-crop-dialog";
 
 // Mirrors the server-side allowlist in convex/avatars.ts (no SVG - XSS).
 const ACCEPTED_TYPES = ["image/png", "image/jpeg", "image/webp", "image/gif"];
@@ -25,9 +27,13 @@ export function AvatarUploader({
   onAvatarChanged,
 }: AvatarUploaderProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cropUrlRef = useRef<string | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const [cropOpen, setCropOpen] = useState(false);
+  const [cropUrl, setCropUrl] = useState<string | null>(null);
 
   const generateUploadUrl = useMutation(api.avatars.generateAvatarUploadUrl);
   const setAvatar = useMutation(api.avatars.setAvatar);
@@ -36,7 +42,16 @@ export function AvatarUploader({
   const initial = (name || "U").charAt(0).toUpperCase();
   const current = preview ?? image;
 
-  async function handleFile(file: File) {
+  // Revoke any leftover crop object URL if we unmount mid-editor.
+  useEffect(() => {
+    return () => {
+      if (cropUrlRef.current) URL.revokeObjectURL(cropUrlRef.current);
+    };
+  }, []);
+
+  /** Validate the picked file, then open the crop editor (no upload yet). */
+  function handleFile(file: File) {
+    if (uploading) return; // ignore drops while an upload is in flight
     setError(null);
 
     // Fast client-side checks (the server re-validates).
@@ -49,15 +64,35 @@ export function AvatarUploader({
       return;
     }
 
-    const objectUrl = URL.createObjectURL(file);
-    setPreview(objectUrl);
+    if (cropUrlRef.current) URL.revokeObjectURL(cropUrlRef.current);
+    const url = URL.createObjectURL(file);
+    cropUrlRef.current = url;
+    setCropUrl(url);
+    setCropOpen(true);
+  }
+
+  function closeEditor() {
+    setCropOpen(false);
+    setCropUrl(null);
+    const url = cropUrlRef.current;
+    cropUrlRef.current = null;
+    if (url) {
+      // Defer so the closing dialog's <img> can finish fading out before
+      // its object URL is revoked.
+      setTimeout(() => URL.revokeObjectURL(url), 250);
+    }
+  }
+
+  /** Upload the cropped avatar (always a PNG from the canvas). Errors are
+   *  re-thrown so the crop dialog can display them above the modal. */
+  async function handleSaveCrop(blob: Blob) {
     setUploading(true);
     try {
       const uploadUrl = await generateUploadUrl();
       const result = await fetch(uploadUrl, {
         method: "POST",
-        headers: { "Content-Type": file.type },
-        body: file,
+        headers: { "Content-Type": "image/png" },
+        body: blob,
       });
       if (!result.ok) {
         throw new Error("Upload failed. Please try again.");
@@ -70,12 +105,8 @@ export function AvatarUploader({
       setPreview(url ?? null);
       await onAvatarChanged();
       setPreview(null);
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Couldn't upload the image.",
-      );
+      closeEditor();
     } finally {
-      URL.revokeObjectURL(objectUrl);
       setUploading(false);
     }
   }
@@ -97,7 +128,31 @@ export function AvatarUploader({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center gap-4">
+      <div
+        className={cn(
+          "-m-1.5 flex flex-wrap items-center gap-4 rounded-xl p-1.5 transition-colors",
+          dragging && "bg-primary/5 ring-primary/50 ring-2 ring-inset",
+        )}
+        onDragOver={(event) => {
+          if (uploading) return;
+          event.preventDefault();
+          setDragging(true);
+        }}
+        onDragLeave={(event) => {
+          // Ignore leaving into a child element - only clear when the
+          // pointer actually leaves the drop zone.
+          if (event.currentTarget.contains(event.relatedTarget as Node)) {
+            return;
+          }
+          setDragging(false);
+        }}
+        onDrop={(event) => {
+          event.preventDefault();
+          setDragging(false);
+          const file = event.dataTransfer.files?.[0];
+          if (file) handleFile(file);
+        }}
+      >
         <Avatar className="size-20 rounded-lg">
           {current ? (
             <AvatarImage src={current} alt={name} />
@@ -138,7 +193,9 @@ export function AvatarUploader({
             )}
           </div>
           <p className="text-muted-foreground text-xs">
-            JPG, PNG, WEBP or GIF - 5 MB max.
+            {dragging
+              ? "Drop to change your photo"
+              : "Drag & drop or click - JPG, PNG, WEBP or GIF, 5 MB max."}
           </p>
         </div>
       </div>
@@ -149,7 +206,7 @@ export function AvatarUploader({
         className="sr-only"
         onChange={(event) => {
           const file = event.target.files?.[0];
-          if (file) void handleFile(file);
+          if (file) handleFile(file);
           // Allow re-selecting the same file later.
           event.target.value = "";
         }}
@@ -159,6 +216,13 @@ export function AvatarUploader({
           {error}
         </p>
       )}
+
+      <AvatarCropDialog
+        open={cropOpen}
+        imageUrl={cropUrl}
+        onClose={closeEditor}
+        onSave={handleSaveCrop}
+      />
     </div>
   );
 }
