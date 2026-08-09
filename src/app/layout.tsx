@@ -1,16 +1,20 @@
-import type { Metadata, Viewport } from 'next'
-import { Geist, Geist_Mono } from 'next/font/google'
-import '@/styles/globals.css'
+import type { Metadata, Viewport } from "next";
+import { Geist, Geist_Mono } from "next/font/google";
+import "@/styles/globals.css";
 
-import { appSettings } from '@/lib/app'
-import { getToken } from '@/lib/auth-server'
-import { ThemeProvider } from '@/components/theme-provider'
-import { ConvexClientProvider } from '@/components/convex-client-provider'
-import { Toaster } from '@/components/ui/sonner'
-import { CookieConsent } from '@/components/cookie-consent'
+import { appSettings } from "@/lib/app";
+import { getToken } from "@/lib/auth-server";
+import { ThemeProvider } from "@/components/theme-provider";
+import { ConvexClientProvider } from "@/components/convex-client-provider";
+import { Toaster } from "@/components/ui/sonner";
+import { CookieConsent } from "@/components/cookie-consent";
+import { CommandPaletteProvider } from "@/components/command-palette";
 
-const geistSans = Geist({ subsets: ['latin'], variable: '--font-geist-sans' })
-const geistMono = Geist_Mono({ subsets: ['latin'], variable: '--font-geist-mono' })
+const geistSans = Geist({ subsets: ["latin"], variable: "--font-geist-sans" });
+const geistMono = Geist_Mono({
+  subsets: ["latin"],
+  variable: "--font-geist-mono",
+});
 
 export const metadata: Metadata = {
   metadataBase: new URL(appSettings.url),
@@ -22,28 +26,31 @@ export const metadata: Metadata = {
   description: appSettings.description,
   icons: {
     icon: [
-      { url: appSettings.logo.iconLight, media: '(prefers-color-scheme: light)' },
-      { url: appSettings.logo.iconDark, media: '(prefers-color-scheme: dark)' },
-      { url: appSettings.logo.iconSvg, type: 'image/svg+xml' },
+      {
+        url: appSettings.logo.iconLight,
+        media: "(prefers-color-scheme: light)",
+      },
+      { url: appSettings.logo.iconDark, media: "(prefers-color-scheme: dark)" },
+      { url: appSettings.logo.iconSvg, type: "image/svg+xml" },
     ],
     apple: appSettings.logo.appleIcon,
   },
-}
+};
 
 export const viewport: Viewport = {
-  colorScheme: 'light dark',
+  colorScheme: "light dark",
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#eae8e3' },
-    { media: '(prefers-color-scheme: dark)', color: '#131519' },
+    { media: "(prefers-color-scheme: light)", color: "#eae8e3" },
+    { media: "(prefers-color-scheme: dark)", color: "#131519" },
   ],
-}
+};
 
 export default async function RootLayout({
   children,
 }: Readonly<{
-  children: React.ReactNode
+  children: React.ReactNode;
 }>) {
-  const token = await getToken()
+  const token = await getToken();
 
   return (
     <html
@@ -51,20 +58,22 @@ export default async function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} bg-background`}
       suppressHydrationWarning
     >
-      <body className="antialiased font-sans">
+      <body className="font-sans antialiased">
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
           enableSystem
           disableTransitionOnChange
         >
-          <ConvexClientProvider initialToken={token}>
-            {children}
-          </ConvexClientProvider>
-          <Toaster position="top-center" />
-          <CookieConsent />
+          <CommandPaletteProvider>
+            <ConvexClientProvider initialToken={token}>
+              {children}
+            </ConvexClientProvider>
+            <Toaster position="top-center" />
+            <CookieConsent />
+          </CommandPaletteProvider>
         </ThemeProvider>
       </body>
     </html>
-  )
+  );
 }

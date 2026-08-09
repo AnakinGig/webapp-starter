@@ -34,6 +34,7 @@ Built with **Next.js 15** (App Router) · **Convex** (reactive backend + databas
 - **Convex** functions for all data access - reactive `useQuery`/`useMutation` hooks (no REST/tRPC boilerplate, optimistic updates and realtime for free)
 - Server env validation with `@t3-oss/env-nextjs`; auth secrets live on the Convex deployment
 - shadcn/ui components (base-ui), light/dark/system theming, responsive layout
+- **Command palette** - press `Ctrl+K` (or `Cmd+K` on macOS) anywhere, or click the "Search" button in the header, to jump to any page or run an action (theme, sign out); arrow keys + Enter to select, `esc` to close
 - **Cookie consent banner** with a preferences dialog (GDPR/ePrivacy-ready, choice stored in a `cookie-consent` cookie)
 - CI workflow (`.github/workflows/ci.yaml`) running lint + typecheck on every push
 
@@ -142,7 +143,10 @@ src/
 ├── components/
 │   ├── ui/             # shadcn/ui primitives
 │   ├── settings/       # settings page sections (profile, account, appearance, security)
-│   └── dashboard/      # admin user-management UI
+│   ├── dashboard/      # admin user-management UI
+│   ├── command-palette.tsx # global Ctrl+K command palette (Dialog + Combobox)
+│   ├── site-header.tsx # header with nav, theme toggle, command-palette trigger
+│   └── nav-user.tsx    # signed-in user menu
 ├── lib/
 │   ├── app.ts          # App settings (brand, contact, legal) - edit this one file
 │   ├── auth-client.ts  # better-auth client (Convex plugin)
