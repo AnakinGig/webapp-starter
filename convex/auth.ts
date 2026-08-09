@@ -10,6 +10,7 @@ import type { DataModel } from "./_generated/dataModel";
 import authConfig from "./auth.config";
 import authSchema from "./betterAuth/schema";
 import { sendActionEmail } from "./email";
+import { buildSocialProviders, enabledProviderIds } from "./oauth";
 
 /**
  * Better Auth component. Lives at the app root (as in the official example)
@@ -112,6 +113,22 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) => {
       },
     },
 
+    account: {
+      // Account linking: a signed-in user can connect external OAuth
+      // providers (Settings > Account) and sign in with them later. The
+      // provider's email must match the account email (`allowDifferentEmails`
+      // stays false) and the last sign-in method can never be unlinked
+      // (`allowUnlinkingAll` stays false). Implicit linking on sign-in is only
+      // allowed for the trusted providers below, and only when the local
+      // account email is already verified (`requireLocalEmailVerified`).
+      accountLinking: {
+        enabled: true,
+        // Only the providers configured via env vars may be implicitly linked
+        // when a returning user signs in with a matching email.
+        trustedProviders: enabledProviderIds(),
+      },
+    },
+
     // Global request hooks. Only used to guard /change-email: the current
     // email must be verified before it can be changed. Enforced server-side
     // here (the endpoint itself doesn't require it) and mirrored in the UI.
@@ -186,13 +203,9 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) => {
       },
     },
 
-    socialProviders: {
-      github: {
-        clientId: process.env.BETTER_AUTH_GITHUB_CLIENT_ID!,
-        clientSecret: process.env.BETTER_AUTH_GITHUB_CLIENT_SECRET!,
-        redirectURI: `${siteUrl}/api/auth/callback/github`,
-      },
-    },
+    socialProviders: buildSocialProviders(
+      siteUrl,
+    ) as BetterAuthOptions["socialProviders"],
 
     // Server-side rate limiting (stored in the component's rateLimit table).
     // Replaces the old in-memory cooldown maps with real enforcement.
@@ -206,6 +219,8 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) => {
         "/request-password-reset": { window: 60, max: 1 },
         "/send-verification-email": { window: 60, max: 1 },
         "/change-email": { window: 60, max: 1 },
+        "/link-social": { window: 60, max: 10 },
+        "/unlink-account": { window: 60, max: 10 },
       },
     },
 

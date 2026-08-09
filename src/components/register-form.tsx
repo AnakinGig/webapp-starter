@@ -1,12 +1,12 @@
-"use client"
+"use client";
 
-import { useState, type FormEvent } from "react"
-import { useRouter } from "next/navigation"
-import { MailCheckIcon, TriangleAlertIcon } from "lucide-react"
+import { useState, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
+import { MailCheckIcon, TriangleAlertIcon } from "lucide-react";
 
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { OAuthButtons } from "@/components/oauth-buttons"
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { OAuthButtons } from "@/components/oauth-buttons";
 import {
   Field,
   FieldDescription,
@@ -14,113 +14,120 @@ import {
   FieldGroup,
   FieldLabel,
   FieldSeparator,
-} from "@/components/ui/field"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { PasswordStrengthMeter } from "@/components/password-strength"
+} from "@/components/ui/field";
+import { useConfiguredProviders } from "@/lib/oauth-providers";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { PasswordStrengthMeter } from "@/components/password-strength";
 import {
   PASSWORD_MIN_LENGTH,
   isValidEmail,
   passwordMeetsPolicy,
-} from "@/lib/validation"
-import { authClient } from "@/lib/auth-client"
+} from "@/lib/validation";
+import { authClient } from "@/lib/auth-client";
 
 type FieldErrors = {
-  name?: string
-  email?: string
-  password?: string
-}
+  name?: string;
+  email?: string;
+  password?: string;
+};
 
 export function RegisterForm() {
-  const router = useRouter()
-  const [name, setName] = useState("")
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [loading, setLoading] = useState(false)
-  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
-  const [formError, setFormError] = useState<string | null>(null)
-  const [createdEmail, setCreatedEmail] = useState<string | null>(null)
+  const router = useRouter();
+  const providers = useConfiguredProviders();
+  const hasOAuth = (providers?.length ?? 0) > 0;
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  const [formError, setFormError] = useState<string | null>(null);
+  const [createdEmail, setCreatedEmail] = useState<string | null>(null);
 
   function clearFieldError(field: keyof FieldErrors) {
-    setFieldErrors((prev) => ({ ...prev, [field]: undefined }))
+    setFieldErrors((prev) => ({ ...prev, [field]: undefined }));
   }
 
   async function onSubmit(e: FormEvent) {
-    e.preventDefault()
-    const errors: FieldErrors = {}
+    e.preventDefault();
+    const errors: FieldErrors = {};
     if (!name.trim()) {
-      errors.name = "Enter your full name."
+      errors.name = "Enter your full name.";
     }
     if (!isValidEmail(email)) {
-      errors.email = "Enter a valid email address."
+      errors.email = "Enter a valid email address.";
     }
     if (!passwordMeetsPolicy(password)) {
-      errors.password = "Password doesn't meet the requirements."
+      errors.password = "Password doesn't meet the requirements.";
     }
     if (Object.keys(errors).length > 0) {
-      setFieldErrors(errors)
-      setFormError(null)
-      return
+      setFieldErrors(errors);
+      setFormError(null);
+      return;
     }
-    setFieldErrors({})
-    setFormError(null)
+    setFieldErrors({});
+    setFormError(null);
 
-    setLoading(true)
+    setLoading(true);
     const { data, error } = await authClient.signUp.email({
       name,
       email,
       password,
-    })
-    setLoading(false)
+    });
+    setLoading(false);
     if (error) {
-      const message = error.message ?? "Could not create your account."
+      const message = error.message ?? "Could not create your account.";
       if (/email|already exists|taken/i.test(message)) {
-        setFieldErrors({ email: message })
+        setFieldErrors({ email: message });
       } else {
-        setFormError(message)
+        setFormError(message);
       }
-      return
+      return;
     }
     // Email/password signups start unverified - show the confirmation step.
     // Prefer the server-normalized email (better-auth lowercases it).
-    setCreatedEmail(data?.user?.email ?? email)
+    setCreatedEmail(data?.user?.email ?? email);
   }
 
   if (createdEmail) {
     return (
       <div className="flex flex-col gap-6">
-        <div className="flex flex-col items-center gap-3 rounded-lg border border-border bg-card p-8 text-center">
-          <span className="flex size-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+        <div className="border-border bg-card flex flex-col items-center gap-3 rounded-lg border p-8 text-center">
+          <span className="bg-primary/10 text-primary flex size-12 items-center justify-center rounded-full">
             <MailCheckIcon className="size-6" />
           </span>
           <h2 className="text-lg font-semibold tracking-tight">
             Check your email
           </h2>
-          <p className="text-sm leading-relaxed text-muted-foreground">
+          <p className="text-muted-foreground text-sm leading-relaxed">
             We sent a verification link to <strong>{createdEmail}</strong>.
-            Click it to confirm your address - you can keep using the app
-            before you verify. Don&apos;t see it? Check your spam folder, or
-            resend from Settings → Security.
+            Click it to confirm your address - you can keep using the app before
+            you verify. Don&apos;t see it? Check your spam folder, or resend
+            from Settings → Security.
           </p>
         </div>
         <Button
           type="button"
           className="w-full"
           onClick={() => {
-            router.push("/dashboard")
-            router.refresh()
+            router.push("/dashboard");
+            router.refresh();
           }}
         >
           Continue to dashboard
         </Button>
       </div>
-    )
+    );
   }
 
   return (
     <form onSubmit={onSubmit} noValidate>
       <FieldGroup>
-        <OAuthButtons />
-        <FieldSeparator>or sign up with email</FieldSeparator>
+        {hasOAuth && (
+          <>
+            <OAuthButtons />
+            <FieldSeparator>or sign up with email</FieldSeparator>
+          </>
+        )}
         {formError && (
           <Alert variant="destructive">
             <TriangleAlertIcon />
@@ -135,8 +142,8 @@ export function RegisterForm() {
             placeholder="Ada Lovelace"
             value={name}
             onChange={(e) => {
-              setName(e.target.value)
-              clearFieldError("name")
+              setName(e.target.value);
+              clearFieldError("name");
             }}
             aria-invalid={Boolean(fieldErrors.name)}
             required
@@ -152,9 +159,9 @@ export function RegisterForm() {
             placeholder="you@company.com"
             value={email}
             onChange={(e) => {
-              setEmail(e.target.value)
-              clearFieldError("email")
-              setFormError(null)
+              setEmail(e.target.value);
+              clearFieldError("email");
+              setFormError(null);
             }}
             aria-invalid={Boolean(fieldErrors.email)}
             required
@@ -169,15 +176,15 @@ export function RegisterForm() {
             autoComplete="new-password"
             value={password}
             onChange={(e) => {
-              setPassword(e.target.value)
-              clearFieldError("password")
+              setPassword(e.target.value);
+              clearFieldError("password");
             }}
             onBlur={() => {
               if (password && !passwordMeetsPolicy(password)) {
                 setFieldErrors((prev) => ({
                   ...prev,
                   password: "Password doesn't meet the requirements.",
-                }))
+                }));
               }
             }}
             aria-invalid={Boolean(fieldErrors.password)}
@@ -200,5 +207,5 @@ export function RegisterForm() {
         </Button>
       </FieldGroup>
     </form>
-  )
+  );
 }

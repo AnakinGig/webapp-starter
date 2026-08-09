@@ -9,7 +9,8 @@ Built with **Next.js 15** (App Router) · **Convex** (reactive backend + databas
 ## ✨ What's included
 
 **Accounts (basics)**
-- Email + password sign-up / sign-in, plus **GitHub OAuth**
+- Email + password sign-up / sign-in, plus **OAuth (env-driven)** - any of the 16 built-in providers (GitHub, Google, Discord, GitLab, Microsoft, Apple, Facebook, X/Twitter, LinkedIn, Twitch, Spotify, Slack, Figma, Notion, Linear, Kakao) is enabled by setting `BETTER_AUTH_<PROVIDER>_CLIENT_ID` / `..._CLIENT_SECRET` on the Convex deployment; no code changes needed
+- **Account linking** - Settings → Account lets signed-in users connect / disconnect OAuth providers (provider email must match the account email; the last sign-in method can't be unlinked; implicit linking on sign-in only for configured providers and verified emails)
 - **First user is automatically an admin** - every later signup gets the `user` role
 - Password policy: **12+ chars, at least one uppercase, one number, one symbol**, enforced server-side by better-auth
 - **ANSSI-style password strength meter** (pattern detection for `1234`/`qwerty`/`abcde`, repeated chars)
@@ -26,7 +27,7 @@ Built with **Next.js 15** (App Router) · **Convex** (reactive backend + databas
 - Duplicate emails rejected with inline field errors
 
 **Settings (`/settings`, all signed-in users)**
-- GitHub-style sidebar: **Profile** (name, role, member-since) · **Appearance** (light / dark / system) · **Security** (password + sessions)
+- GitHub-style sidebar: **Profile** (name, role, member-since) · **Account** (connected OAuth providers - link/disconnect with confirm dialog) · **Appearance** (light / dark / system) · **Security** (password + sessions)
 - **Danger zone** - self-service account deletion with a type-your-email confirmation dialog; last-admin guard, cascades sessions/accounts
 
 **Foundations**
@@ -53,6 +54,8 @@ npx convex dev
 # 3. Set auth/email secrets on the deployment (see .env.example)
 npx convex env set BETTER_AUTH_SECRET "$(openssl rand -base64 32)"
 npx convex env set SITE_URL "http://localhost:3000"
+# OAuth: any supported provider can be enabled with its client id + secret
+# (GitHub here; see the env table for the full list)
 npx convex env set BETTER_AUTH_GITHUB_CLIENT_ID "dummy-or-real-id"
 npx convex env set BETTER_AUTH_GITHUB_CLIENT_SECRET "dummy-or-real-secret"
 
@@ -71,7 +74,7 @@ pnpm dev        # http://localhost:3000
 | `NEXT_PUBLIC_APP_URL` | `.env.local` | Canonical app URL for SEO/metadata (defaults to `http://localhost:3000`) |
 | `BETTER_AUTH_SECRET` | **Convex** | `npx convex env set` |
 | `SITE_URL` | **Convex** | Auth base URL, e.g. `http://localhost:3000` |
-| `BETTER_AUTH_GITHUB_CLIENT_ID` / `..._SECRET` | **Convex** | GitHub OAuth (dummy values pass in dev) |
+| `BETTER_AUTH_<PROVIDER>_CLIENT_ID` / `..._SECRET` | **Convex** | OAuth for `<PROVIDER>` (uppercase): `GOOGLE`, `GITHUB`, `DISCORD`, `GITLAB`, `MICROSOFT`, `APPLE`, `FACEBOOK`, `TWITTER`, `LINKEDIN`, `TWITCH`, `SPOTIFY`, `SLACK`, `FIGMA`, `NOTION`, `LINEAR`, `KAKAO`. Set a pair to enable that provider everywhere (login buttons, Settings → Account); unset it to remove. Dummy values pass in dev. Provider OAuth apps must allow `SITE_URL`-based callback URLs |
 | `RESEND_API_KEY` | **Convex** | Optional; unset/empty = verification & reset links are logged to the function logs (see 📧 Email) |
 | `RESEND_EMAIL_FROM` | **Convex** | Optional; defaults to Resend's shared test domain `onboarding@resend.dev` |
 | `ENVIRONMENT` | **Convex** | `"production"` on the production deployment only; anything else (or unset) = dev. Controls whether a missing `RESEND_API_KEY` logs the link (dev) or a safe error (prod). NOT `NODE_ENV` - Convex sets that to `"production"` everywhere |
@@ -121,7 +124,9 @@ Both better-auth hooks (`sendVerificationEmail`, `sendResetPassword`) already ca
 
 ```
 convex/                 # Backend: Convex functions + better-auth component
-├── auth.ts             # authComponent + auth options: role field, first-user-admin trigger, rate limiting, GitHub OAuth
+├── auth.ts             # authComponent + auth options: role field, first-user-admin trigger, rate limiting, account linking, OAuth (env-driven)
+├── oauth.ts            # OAuth provider catalogue + env-driven socialProviders builder
+├── providers.ts        # public query: which providers are configured (drives login buttons + Settings → Account)
 ├── schema.ts           # App tables (empty - add your domain tables here)
 ├── users.ts            # Admin user CRUD, guard rails, stats, GDPR export, delete-account
 ├── email.ts            # Resend helper (verification + reset emails)
@@ -136,7 +141,7 @@ src/
 │   └── api/auth/       # /api/auth/* proxy → Convex
 ├── components/
 │   ├── ui/             # shadcn/ui primitives
-│   ├── settings/       # settings page sections (profile, appearance, security)
+│   ├── settings/       # settings page sections (profile, account, appearance, security)
 │   └── dashboard/      # admin user-management UI
 ├── lib/
 │   ├── app.ts          # App settings (brand, contact, legal) - edit this one file

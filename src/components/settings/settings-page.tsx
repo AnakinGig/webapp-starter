@@ -1,57 +1,62 @@
-"use client"
+"use client";
 
-import { useState } from "react"
+import { useState } from "react";
 import {
+  AtSignIcon,
   PaletteIcon,
   ShieldIcon,
   UserRoundIcon,
-} from "lucide-react"
+} from "lucide-react";
 
-import { authClient } from "@/lib/auth-client"
-import { cn } from "@/lib/utils"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { ProfileSection } from "./profile-section"
-import { AppearanceSection } from "./appearance-section"
-import { SecuritySection } from "./security-section"
+import { authClient } from "@/lib/auth-client";
+import { cn } from "@/lib/utils";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { AccountSection } from "./account-section";
+import { ProfileSection } from "./profile-section";
+import { AppearanceSection } from "./appearance-section";
+import { SecuritySection } from "./security-section";
 
 const SECTIONS = [
   { id: "profile", label: "Profile", icon: UserRoundIcon },
+  { id: "account", label: "Account", icon: AtSignIcon },
   { id: "appearance", label: "Appearance", icon: PaletteIcon },
   { id: "security", label: "Security", icon: ShieldIcon },
-] as const
+] as const;
 
-export type SettingsSectionId = (typeof SECTIONS)[number]["id"]
+export type SettingsSectionId = (typeof SECTIONS)[number]["id"];
 
 export function SettingsPage() {
-  const [active, setActive] = useState<SettingsSectionId>("profile")
-  const { data: session } = authClient.useSession()
-  const user = session?.user
-  const name = user?.name ?? user?.email ?? "User"
-  const initial = name.charAt(0).toUpperCase()
+  const [active, setActive] = useState<SettingsSectionId>("profile");
+  const { data: session } = authClient.useSession();
+  const user = session?.user;
+  const name = user?.name ?? user?.email ?? "User";
+  const initial = name.charAt(0).toUpperCase();
 
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6">
       <div className="mb-8">
         <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
-        <p className="text-sm leading-relaxed text-muted-foreground">
-          Manage your profile, appearance and security.
+        <p className="text-muted-foreground text-sm leading-relaxed">
+          Manage your profile, connected accounts, appearance and security.
         </p>
       </div>
 
       <div className="flex flex-col gap-8 lg:flex-row lg:items-start">
         {/* Sidebar */}
         <aside className="w-full shrink-0 lg:sticky lg:top-20 lg:w-64">
-          <div className="mb-4 hidden items-center gap-3 rounded-lg border border-border p-3 lg:flex">
+          <div className="border-border mb-4 hidden items-center gap-3 rounded-lg border p-3 lg:flex">
             <Avatar className="size-10 rounded-lg">
               {user?.image ? (
                 <AvatarImage src={user.image} alt={name} />
               ) : (
-                <AvatarFallback className="rounded-lg">{initial}</AvatarFallback>
+                <AvatarFallback className="rounded-lg">
+                  {initial}
+                </AvatarFallback>
               )}
             </Avatar>
             <div className="min-w-0">
               <p className="truncate text-sm font-medium">{name}</p>
-              <p className="truncate text-xs text-muted-foreground">
+              <p className="text-muted-foreground truncate text-xs">
                 {user?.email}
               </p>
             </div>
@@ -67,9 +72,9 @@ export function SettingsPage() {
                 onClick={() => setActive(id)}
                 aria-current={active === id ? "page" : undefined}
                 className={cn(
-                  "flex shrink-0 items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
+                  "focus-visible:ring-ring/50 flex shrink-0 items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors outline-none focus-visible:ring-3",
                   active === id
-                    ? "bg-accent font-medium text-accent-foreground"
+                    ? "bg-accent text-accent-foreground font-medium"
                     : "text-muted-foreground hover:bg-muted hover:text-foreground",
                 )}
               >
@@ -83,10 +88,11 @@ export function SettingsPage() {
         {/* Content */}
         <div className="min-w-0 flex-1">
           {active === "profile" && <ProfileSection />}
+          {active === "account" && <AccountSection />}
           {active === "appearance" && <AppearanceSection />}
           {active === "security" && <SecuritySection />}
         </div>
       </div>
     </div>
-  )
+  );
 }
