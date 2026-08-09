@@ -225,15 +225,31 @@ export function AvatarUploader({
 
           <div className="flex flex-col gap-4">
             <div className="flex items-center gap-3">
-              <Avatar className="size-16 rounded-lg">
-                {current ? (
-                  <AvatarImage src={current} alt={name} />
-                ) : (
-                  <AvatarFallback className="rounded-lg text-lg">
-                    {initial}
-                  </AvatarFallback>
+              <div className="relative">
+                <Avatar className="size-16 rounded-lg">
+                  {current ? (
+                    <AvatarImage src={current} alt={name} />
+                  ) : (
+                    <AvatarFallback className="rounded-lg text-lg">
+                      {initial}
+                    </AvatarFallback>
+                  )}
+                </Avatar>
+                {image && (
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="icon-sm"
+                    aria-label="Remove photo"
+                    title="Remove photo"
+                    disabled={uploading}
+                    onClick={() => void handleRemove()}
+                    className="ring-background bg-destructive text-destructive-foreground hover:bg-destructive/90 absolute -top-1.5 -right-1.5 rounded-full ring-2"
+                  >
+                    <Trash2 />
+                  </Button>
                 )}
-              </Avatar>
+              </div>
               <div className="min-w-0">
                 <p className="truncate text-sm font-medium">{name}</p>
                 <p className="text-muted-foreground text-xs">
@@ -287,20 +303,6 @@ export function AvatarUploader({
                 or drag &amp; drop it here
               </span>
             </div>
-
-            {image && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="text-destructive hover:text-destructive w-fit"
-                disabled={uploading}
-                onClick={() => void handleRemove()}
-              >
-                <Trash2 className="size-4" />
-                Remove photo
-              </Button>
-            )}
 
             {error && (
               <p role="alert" className="text-destructive text-sm">
