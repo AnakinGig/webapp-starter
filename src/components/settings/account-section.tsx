@@ -25,6 +25,11 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { formatDate } from "@/lib/format";
 import {
   OAuthProviderIcon,
@@ -161,20 +166,32 @@ export function AccountSection() {
                       </p>
                     </div>
                     {linked ? (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        disabled={isOnlyMethod}
-                        title={
-                          isOnlyMethod
-                            ? "You need another way to sign in before disconnecting this account."
-                            : undefined
-                        }
-                        onClick={() => setUnlinkTarget(linked)}
-                      >
-                        Disconnect
-                      </Button>
+                      <Tooltip>
+                        <TooltipTrigger
+                          render={<span className="inline-flex" />}
+                        >
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={isOnlyMethod}
+                            title={
+                              isOnlyMethod
+                                ? "You need another way to sign in before disconnecting this account."
+                                : undefined
+                            }
+                            onClick={() => setUnlinkTarget(linked)}
+                          >
+                            Disconnect
+                          </Button>
+                        </TooltipTrigger>
+                        {isOnlyMethod && (
+                          <TooltipContent>
+                            You need another way to sign in before disconnecting
+                            this account.
+                          </TooltipContent>
+                        )}
+                      </Tooltip>
                     ) : (
                       <Button
                         type="button"

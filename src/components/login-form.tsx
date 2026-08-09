@@ -113,6 +113,11 @@ export function LoginForm() {
               setEmailError(null);
               setFormError(null);
             }}
+            onBlur={() => {
+              if (email && !isValidEmail(email)) {
+                setEmailError("Enter a valid email address.");
+              }
+            }}
             aria-invalid={Boolean(emailError)}
             required
           />

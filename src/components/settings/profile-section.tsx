@@ -39,6 +39,11 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { formatDate } from "@/lib/format";
 import { sendVerificationEmail } from "@/lib/send-verification";
 import { isValidEmail } from "@/lib/validation";
@@ -403,9 +408,16 @@ export function ProfileSection() {
             </FieldGroup>
           </CardContent>
           <CardFooter className="border-border justify-end border-t">
-            <Button type="submit" disabled={saving || isUnchanged}>
-              {saving ? "Saving…" : "Update profile"}
-            </Button>
+            <Tooltip>
+              <TooltipTrigger render={<span className="inline-flex" />}>
+                <Button type="submit" disabled={saving || isUnchanged}>
+                  {saving ? "Saving…" : "Update profile"}
+                </Button>
+              </TooltipTrigger>
+              {!saving && isUnchanged && (
+                <TooltipContent>No changes to save.</TooltipContent>
+              )}
+            </Tooltip>
           </CardFooter>
         </form>
       </Card>

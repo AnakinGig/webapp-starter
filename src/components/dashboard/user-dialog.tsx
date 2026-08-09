@@ -1,10 +1,10 @@
-"use client"
+"use client";
 
-import { useEffect, useState, type FormEvent } from "react"
-import { TriangleAlertIcon } from "lucide-react"
+import { useEffect, useState, type FormEvent } from "react";
+import { TriangleAlertIcon } from "lucide-react";
 
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -12,13 +12,13 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
+} from "@/components/ui/dialog";
 import {
   Field,
   FieldError,
   FieldGroup,
   FieldLabel,
-} from "@/components/ui/field"
+} from "@/components/ui/field";
 import {
   Select,
   SelectContent,
@@ -26,25 +26,28 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { isValidEmail } from "@/lib/validation"
-import type { DashboardUser, DashboardUserDraft } from "@/components/dashboard/types"
+} from "@/components/ui/select";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { isValidEmail } from "@/lib/validation";
+import type {
+  DashboardUser,
+  DashboardUserDraft,
+} from "@/components/dashboard/types";
 
 type Props = {
-  open: boolean
-  onOpenChange: (open: boolean) => void
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   /** Present when editing; undefined when creating. */
-  user?: DashboardUser | null
-  onSave: (values: DashboardUserDraft, user: DashboardUser | null) => void
+  user?: DashboardUser | null;
+  onSave: (values: DashboardUserDraft, user: DashboardUser | null) => void;
   /** Disable the role picker (editing your own account - the API forbids it). */
-  disabledRole?: boolean
+  disabledRole?: boolean;
   /** Server-side mutation error to display inline. */
-  error?: string | null
-  onClearError?: () => void
+  error?: string | null;
+  onClearError?: () => void;
   /** True while the create/update mutation is running. */
-  pending?: boolean
-}
+  pending?: boolean;
+};
 
 export function UserDialog({
   open,
@@ -56,36 +59,37 @@ export function UserDialog({
   onClearError,
   pending = false,
 }: Props) {
-  const isEdit = Boolean(user)
+  const isEdit = Boolean(user);
 
-  const [name, setName] = useState("")
-  const [email, setEmail] = useState("")
-  const [role, setRole] = useState("user")
-  const [localEmailError, setLocalEmailError] = useState<string | null>(null)
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [role, setRole] = useState("user");
+  const [localEmailError, setLocalEmailError] = useState<string | null>(null);
 
   useEffect(() => {
     if (open) {
-      setName(user?.name ?? "")
-      setEmail(user?.email ?? "")
-      setRole(user?.role ?? "user")
-      setLocalEmailError(null)
+      setName(user?.name ?? "");
+      setEmail(user?.email ?? "");
+      setRole(user?.role ?? "user");
+      setLocalEmailError(null);
     }
-  }, [open, user])
+  }, [open, user]);
 
   // Map server errors to the field they concern; anything else is form-level.
-  const emailError = error && /email|already exists|taken/i.test(error) ? error : null
+  const emailError =
+    error && /email|already exists|taken/i.test(error) ? error : null;
   const roleError =
-    error && !emailError && /role|admin/i.test(error) ? error : null
-  const formError = error && !emailError && !roleError ? error : null
-  const emailInvalid = Boolean(emailError ?? localEmailError)
+    error && !emailError && /role|admin/i.test(error) ? error : null;
+  const formError = error && !emailError && !roleError ? error : null;
+  const emailInvalid = Boolean(emailError ?? localEmailError);
 
   function handleSubmit(e: FormEvent) {
-    e.preventDefault()
+    e.preventDefault();
     if (!isValidEmail(email)) {
-      setLocalEmailError("Enter a valid email address.")
-      return
+      setLocalEmailError("Enter a valid email address.");
+      return;
     }
-    setLocalEmailError(null)
+    setLocalEmailError(null);
     onSave(
       {
         name,
@@ -93,7 +97,7 @@ export function UserDialog({
         role: role as "admin" | "user",
       },
       user ?? null,
-    )
+    );
     // Note: the dialog intentionally stays open - the parent closes it on
     // success, and on failure the server error is shown inline below.
   }
@@ -118,8 +122,8 @@ export function UserDialog({
                 id="user-name"
                 value={name}
                 onChange={(e) => {
-                  setName(e.target.value)
-                  onClearError?.()
+                  setName(e.target.value);
+                  onClearError?.();
                 }}
                 placeholder="Ada Lovelace"
                 required
@@ -132,9 +136,14 @@ export function UserDialog({
                 type="email"
                 value={email}
                 onChange={(e) => {
-                  setEmail(e.target.value)
-                  setLocalEmailError(null)
-                  onClearError?.()
+                  setEmail(e.target.value);
+                  setLocalEmailError(null);
+                  onClearError?.();
+                }}
+                onBlur={() => {
+                  if (email && !isValidEmail(email)) {
+                    setLocalEmailError("Enter a valid email address.");
+                  }
                 }}
                 placeholder="you@company.com"
                 aria-invalid={emailInvalid}
@@ -150,8 +159,8 @@ export function UserDialog({
                 value={role}
                 onValueChange={(value) => {
                   if (value) {
-                    setRole(value)
-                    onClearError?.()
+                    setRole(value);
+                    onClearError?.();
                   }
                 }}
                 disabled={disabledRole}
@@ -172,7 +181,7 @@ export function UserDialog({
               </Select>
               {roleError && <FieldError>{roleError}</FieldError>}
               {disabledRole && (
-                <p className="text-xs text-muted-foreground">
+                <p className="text-muted-foreground text-xs">
                   You can&apos;t change your own role.
                 </p>
               )}
@@ -206,5 +215,5 @@ export function UserDialog({
         </form>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

@@ -163,6 +163,14 @@ export function RegisterForm() {
               clearFieldError("email");
               setFormError(null);
             }}
+            onBlur={() => {
+              if (email && !isValidEmail(email)) {
+                setFieldErrors((prev) => ({
+                  ...prev,
+                  email: "Enter a valid email address.",
+                }));
+              }
+            }}
             aria-invalid={Boolean(fieldErrors.email)}
             required
           />

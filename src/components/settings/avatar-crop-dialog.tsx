@@ -13,6 +13,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 const PREVIEW_SIZE = 64; // px - mini live preview of the crop
 const EXPORT_SIZE = 512; // px - exported square avatar
@@ -150,6 +155,8 @@ export function AvatarCropDialog({
     return { width, height };
   }, [natural]);
   const box = boxSize ?? { width: MAX_BOX_SIDE, height: MAX_BOX_SIDE };
+  const atDefault =
+    zoom === 1 && rotation === 0 && crop.x === 0 && crop.y === 0;
 
   // Live mini preview mirrors the crop (same math at PREVIEW_SIZE).
   useEffect(() => {
@@ -291,16 +298,23 @@ export function AvatarCropDialog({
         </div>
 
         <div className="flex items-center gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="icon-sm"
-            aria-label="Zoom out"
-            disabled={zoom <= 1}
-            onClick={() => setZoom(Math.max(1, zoom / 1.25))}
-          >
-            <Minus className="size-4" />
-          </Button>
+          <Tooltip>
+            <TooltipTrigger render={<span className="inline-flex" />}>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon-sm"
+                aria-label="Zoom out"
+                disabled={zoom <= 1}
+                onClick={() => setZoom(Math.max(1, zoom / 1.25))}
+              >
+                <Minus className="size-4" />
+              </Button>
+            </TooltipTrigger>
+            {zoom <= 1 && (
+              <TooltipContent>Already at minimum zoom.</TooltipContent>
+            )}
+          </Tooltip>
           <input
             type="range"
             min={1}
@@ -311,16 +325,23 @@ export function AvatarCropDialog({
             onChange={(event) => setZoom(Number(event.target.value))}
             className="accent-foreground h-2 flex-1 cursor-pointer"
           />
-          <Button
-            type="button"
-            variant="outline"
-            size="icon-sm"
-            aria-label="Zoom in"
-            disabled={zoom >= MAX_ZOOM}
-            onClick={() => setZoom(Math.min(MAX_ZOOM, zoom * 1.25))}
-          >
-            <Plus className="size-4" />
-          </Button>
+          <Tooltip>
+            <TooltipTrigger render={<span className="inline-flex" />}>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon-sm"
+                aria-label="Zoom in"
+                disabled={zoom >= MAX_ZOOM}
+                onClick={() => setZoom(Math.min(MAX_ZOOM, zoom * 1.25))}
+              >
+                <Plus className="size-4" />
+              </Button>
+            </TooltipTrigger>
+            {zoom >= MAX_ZOOM && (
+              <TooltipContent>Already at maximum zoom.</TooltipContent>
+            )}
+          </Tooltip>
           <Button
             type="button"
             variant="outline"
@@ -330,22 +351,25 @@ export function AvatarCropDialog({
           >
             <RotateCw className="size-4" />
           </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            aria-label="Reset zoom, position and rotation"
-            disabled={
-              zoom === 1 && rotation === 0 && crop.x === 0 && crop.y === 0
-            }
-            onClick={() => {
-              setCrop({ x: 0, y: 0 });
-              setZoom(1);
-              setRotation(0);
-            }}
-          >
-            <RotateCcw className="size-4" />
-          </Button>
+          <Tooltip>
+            <TooltipTrigger render={<span className="inline-flex" />}>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                aria-label="Reset zoom, position and rotation"
+                disabled={atDefault}
+                onClick={() => {
+                  setCrop({ x: 0, y: 0 });
+                  setZoom(1);
+                  setRotation(0);
+                }}
+              >
+                <RotateCcw className="size-4" />
+              </Button>
+            </TooltipTrigger>
+            {atDefault && <TooltipContent>Nothing to reset.</TooltipContent>}
+          </Tooltip>
         </div>
 
         <div className="flex items-center gap-3">
@@ -375,19 +399,26 @@ export function AvatarCropDialog({
           <Button variant="outline" onClick={onClose} disabled={saving}>
             Cancel
           </Button>
-          <Button
-            onClick={() => void handleSave()}
-            disabled={!pixelCrop || saving}
-          >
-            {saving ? (
-              <>
-                <LoaderCircle className="size-4 animate-spin" />
-                Saving…
-              </>
-            ) : (
-              "Save photo"
+          <Tooltip>
+            <TooltipTrigger render={<span className="inline-flex" />}>
+              <Button
+                onClick={() => void handleSave()}
+                disabled={!pixelCrop || saving}
+              >
+                {saving ? (
+                  <>
+                    <LoaderCircle className="size-4 animate-spin" />
+                    Saving…
+                  </>
+                ) : (
+                  "Save photo"
+                )}
+              </Button>
+            </TooltipTrigger>
+            {!saving && !pixelCrop && (
+              <TooltipContent>Adjust your photo before saving.</TooltipContent>
             )}
-          </Button>
+          </Tooltip>
         </DialogFooter>
       </DialogContent>
     </Dialog>

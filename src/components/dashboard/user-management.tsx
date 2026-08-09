@@ -1,37 +1,41 @@
-"use client"
+"use client";
 
-import Link from "next/link"
-import { useState, useEffect, useMemo, type ComponentType } from "react"
+import Link from "next/link";
+import { useState, useEffect, useMemo, type ComponentType } from "react";
 import {
   MoreHorizontalIcon,
   PencilIcon,
   PlusIcon,
   SearchIcon,
   Trash2Icon,
+  TriangleAlertIcon,
   UsersIcon,
   ShieldCheckIcon,
   MailCheckIcon,
-} from "lucide-react"
-import { toast } from "sonner"
-import { useMutation, useQuery } from "convex/react"
+} from "lucide-react";
+import { toast } from "sonner";
+import { useMutation, useQuery } from "convex/react";
 
-import { api } from "@/convex/_generated/api"
-import { UserDialog } from "@/components/dashboard/user-dialog"
-import type { DashboardUser, DashboardUserDraft } from "@/components/dashboard/types"
-import { formatDate } from "@/lib/format"
-import { authClient } from "@/lib/auth-client"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
-import { Skeleton } from "@/components/ui/skeleton"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { api } from "@/convex/_generated/api";
+import { UserDialog } from "@/components/dashboard/user-dialog";
+import type {
+  DashboardUser,
+  DashboardUserDraft,
+} from "@/components/dashboard/types";
+import { formatDate } from "@/lib/format";
+import { authClient } from "@/lib/auth-client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Card,
   CardHeader,
   CardTitle,
   CardContent,
   CardDescription,
-} from "@/components/ui/card"
+} from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -39,21 +43,21 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
+} from "@/components/ui/table";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from "@/components/ui/dropdown-menu";
 import {
   Empty,
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
   EmptyDescription,
-} from "@/components/ui/empty"
+} from "@/components/ui/empty";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -64,7 +68,13 @@ import {
   AlertDialogHeader,
   AlertDialogMedia,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
+} from "@/components/ui/alert-dialog";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   Pagination,
   PaginationContent,
@@ -72,22 +82,22 @@ import {
   PaginationLink,
   PaginationNext,
   PaginationPrevious,
-} from "@/components/ui/pagination"
+} from "@/components/ui/pagination";
 
-const PAGE_SIZE = 10
+const PAGE_SIZE = 10;
 
 function initials(name: string | null, email: string) {
-  const source = name?.trim() ?? email?.split("@")[0] ?? "U"
+  const source = name?.trim() ?? email?.split("@")[0] ?? "U";
   return source
     .split(/\s+/)
     .slice(0, 2)
     .map((p) => p[0]?.toUpperCase())
-    .join("")
+    .join("");
 }
 
 function errorMessage(err: unknown, fallback: string): string {
-  if (err instanceof Error && err.message) return err.message
-  return fallback
+  if (err instanceof Error && err.message) return err.message;
+  return fallback;
 }
 
 function StatCard({
@@ -96,15 +106,15 @@ function StatCard({
   icon: Icon,
   loading,
 }: {
-  label: string
-  value: number
-  icon: ComponentType<{ className?: string }>
-  loading: boolean
+  label: string;
+  value: number;
+  icon: ComponentType<{ className?: string }>;
+  loading: boolean;
 }) {
   return (
     <Card>
       <CardHeader>
-        <CardDescription className="flex items-center gap-2 font-mono text-xs uppercase tracking-wider">
+        <CardDescription className="flex items-center gap-2 font-mono text-xs tracking-wider uppercase">
           <Icon className="size-3.5" />
           {label}
         </CardDescription>
@@ -113,54 +123,55 @@ function StatCard({
         </CardTitle>
       </CardHeader>
     </Card>
-  )
+  );
 }
 
 export function UserManagement() {
-  const [page, setPage] = useState(1)
-  const [searchQuery, setSearchQuery] = useState("")
-  const [debouncedQuery, setDebouncedQuery] = useState("")
-  const [dialogOpen, setDialogOpen] = useState(false)
-  const [editing, setEditing] = useState<DashboardUser | null>(null)
-  const [dialogError, setDialogError] = useState<string | null>(null)
-  const [toDelete, setToDelete] = useState<DashboardUser | null>(null)
+  const [page, setPage] = useState(1);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editing, setEditing] = useState<DashboardUser | null>(null);
+  const [dialogError, setDialogError] = useState<string | null>(null);
+  const [toDelete, setToDelete] = useState<DashboardUser | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      setDebouncedQuery(searchQuery)
-      setPage(1)
-    }, 300)
-    return () => clearTimeout(timer)
-  }, [searchQuery])
+      setDebouncedQuery(searchQuery);
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
-  const { data: session, isPending: sessionPending } = authClient.useSession()
+  const { data: session, isPending: sessionPending } = authClient.useSession();
   // While the session is missing (initial load, after sign-out, or after being
   // demoted) the admin queries would fail server-side and useQuery throws
   // during render, crashing the page. "skip" disables them until the caller is
   // an admin again.
-  const signedIn = session?.user?.role === "admin"
+  const signedIn = session?.user?.role === "admin";
 
   const usersResult = useQuery(
     api.users.getMany,
     signedIn
       ? { page, pageSize: PAGE_SIZE, query: debouncedQuery || undefined }
       : "skip",
-  )
+  );
 
-  const stats = useQuery(api.users.getStats, signedIn ? {} : "skip")
+  const stats = useQuery(api.users.getStats, signedIn ? {} : "skip");
 
-  const isSelf = (userId: string) => session?.user.id === userId
+  const isSelf = (userId: string) => session?.user.id === userId;
 
-  const createUser = useMutation(api.users.create)
-  const updateUser = useMutation(api.users.update)
-  const deleteUser = useMutation(api.users.remove)
-  const [saving, setSaving] = useState(false)
-  const [deleting, setDeleting] = useState(false)
+  const createUser = useMutation(api.users.create);
+  const updateUser = useMutation(api.users.update);
+  const deleteUser = useMutation(api.users.remove);
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
-  const users = useMemo(() => usersResult?.data ?? [], [usersResult])
-  const totalPages = usersResult?.totalPages ?? 0
-  const usersLoading = usersResult === undefined
-  const statsLoading = stats === undefined
+  const users = useMemo(() => usersResult?.data ?? [], [usersResult]);
+  const totalPages = usersResult?.totalPages ?? 0;
+  const usersLoading = usersResult === undefined;
+  const statsLoading = stats === undefined;
 
   // Session confirmed gone (e.g. after sign-out): the queries are skipped, so
   // render a fallback instead of the admin table. The layout redirects on the
@@ -174,83 +185,105 @@ export function UserManagement() {
           </EmptyMedia>
           <EmptyTitle>Access required</EmptyTitle>
           <EmptyDescription>
-            Your session has ended or you no longer have admin access. Sign
-            back in to manage users.
+            Your session has ended or you no longer have admin access. Sign back
+            in to manage users.
           </EmptyDescription>
         </EmptyHeader>
         <Button render={<Link href="/login" />}>Sign in</Button>
       </Empty>
-    )
+    );
   }
 
   async function handleSave(
     values: DashboardUserDraft,
     user: DashboardUser | null,
   ) {
-    setDialogError(null)
-    setSaving(true)
+    setDialogError(null);
+    setSaving(true);
     try {
       if (user) {
-        await updateUser({ id: user.id, ...values })
-        toast.success("User updated.")
+        await updateUser({ id: user.id, ...values });
+        toast.success("User updated.");
       } else {
-        await createUser(values)
-        toast.success("User created.")
+        await createUser(values);
+        toast.success("User created.");
       }
-      setDialogOpen(false)
-      setEditing(null)
-      setDialogError(null)
+      setDialogOpen(false);
+      setEditing(null);
+      setDialogError(null);
     } catch (err) {
       // Keep the dialog open and show the error inline under the relevant
       // field (the dialog maps known messages to fields).
-      setDialogError(errorMessage(err, "Something went wrong. Please try again."))
+      setDialogError(
+        errorMessage(err, "Something went wrong. Please try again."),
+      );
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
   }
 
   async function handleDelete() {
-    if (!toDelete) return
-    setDeleting(true)
+    if (!toDelete) return;
+    setDeleting(true);
+    setDeleteError(null);
     try {
-      await deleteUser({ id: toDelete.id })
-      toast.success("User removed.")
-      setToDelete(null)
+      await deleteUser({ id: toDelete.id });
+      toast.success("User removed.");
+      setToDelete(null);
     } catch (err) {
-      toast.error(errorMessage(err, "Could not remove this user."))
+      // Keep the dialog open and show the failure inline (e.g. the last-admin
+      // guard) instead of a toast - errors live with the action, not in a toast.
+      setDeleteError(errorMessage(err, "Could not remove this user."));
     } finally {
-      setDeleting(false)
+      setDeleting(false);
     }
   }
 
   function openCreate() {
-    setEditing(null)
-    setDialogError(null)
-    setDialogOpen(true)
+    setEditing(null);
+    setDialogError(null);
+    setDialogOpen(true);
   }
   function openEdit(user: DashboardUser) {
-    setEditing(user)
-    setDialogError(null)
-    setDialogOpen(true)
+    setEditing(user);
+    setDialogError(null);
+    setDialogOpen(true);
   }
 
   return (
     <div className="flex flex-col gap-6">
       <div className="grid gap-4 sm:grid-cols-3">
-        <StatCard label="Total users" value={stats?.total ?? 0} icon={UsersIcon} loading={statsLoading} />
-        <StatCard label="Admins" value={stats?.admins ?? 0} icon={ShieldCheckIcon} loading={statsLoading} />
-        <StatCard label="Verified" value={stats?.verified ?? 0} icon={MailCheckIcon} loading={statsLoading} />
+        <StatCard
+          label="Total users"
+          value={stats?.total ?? 0}
+          icon={UsersIcon}
+          loading={statsLoading}
+        />
+        <StatCard
+          label="Admins"
+          value={stats?.admins ?? 0}
+          icon={ShieldCheckIcon}
+          loading={statsLoading}
+        />
+        <StatCard
+          label="Verified"
+          value={stats?.verified ?? 0}
+          icon={MailCheckIcon}
+          loading={statsLoading}
+        />
       </div>
 
       <Card>
-        <CardHeader className="gap-4 border-b border-border sm:flex-row sm:items-center sm:justify-between">
+        <CardHeader className="border-border gap-4 border-b sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-col gap-1">
             <CardTitle>Users</CardTitle>
-            <CardDescription>Manage the people in your workspace.</CardDescription>
+            <CardDescription>
+              Manage the people in your workspace.
+            </CardDescription>
           </div>
           <div className="flex items-center gap-2">
             <div className="relative">
-              <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+              <SearchIcon className="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
               <Input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -319,13 +352,21 @@ export function UserManagement() {
                             </AvatarFallback>
                           </Avatar>
                           <div className="flex flex-col">
-                            <span className="font-medium leading-tight">{user.name ?? user.email}</span>
-                            <span className="text-xs text-muted-foreground">{user.email}</span>
+                            <span className="leading-tight font-medium">
+                              {user.name ?? user.email}
+                            </span>
+                            <span className="text-muted-foreground text-xs">
+                              {user.email}
+                            </span>
                           </div>
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge variant={user.role === "admin" ? "default" : "secondary"}>
+                        <Badge
+                          variant={
+                            user.role === "admin" ? "default" : "secondary"
+                          }
+                        >
                           {user.role}
                         </Badge>
                       </TableCell>
@@ -336,14 +377,18 @@ export function UserManagement() {
                           <Badge variant="outline">Pending</Badge>
                         )}
                       </TableCell>
-                      <TableCell className="text-sm text-muted-foreground tabular-nums">
+                      <TableCell className="text-muted-foreground text-sm tabular-nums">
                         {formatDate(user.createdAt)}
                       </TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger
                             render={
-                              <Button variant="ghost" size="icon-sm" aria-label={`Actions for ${user.name ?? user.email}`} />
+                              <Button
+                                variant="ghost"
+                                size="icon-sm"
+                                aria-label={`Actions for ${user.name ?? user.email}`}
+                              />
                             }
                           >
                             <MoreHorizontalIcon />
@@ -354,19 +399,30 @@ export function UserManagement() {
                                 <PencilIcon />
                                 Edit
                               </DropdownMenuItem>
-                              <DropdownMenuItem
-                                variant="destructive"
-                                disabled={isSelf(user.id)}
-                                title={
-                                  isSelf(user.id)
-                                    ? "You cannot delete your own account"
-                                    : undefined
-                                }
-                                onClick={() => setToDelete(user)}
-                              >
-                                <Trash2Icon />
-                                Delete
-                              </DropdownMenuItem>
+                              <Tooltip>
+                                <TooltipTrigger
+                                  render={
+                                    <DropdownMenuItem
+                                      variant="destructive"
+                                      disabled={isSelf(user.id)}
+                                      title={
+                                        isSelf(user.id)
+                                          ? "You cannot delete your own account."
+                                          : undefined
+                                      }
+                                      onClick={() => setToDelete(user)}
+                                    >
+                                      <Trash2Icon />
+                                      Delete
+                                    </DropdownMenuItem>
+                                  }
+                                />
+                                {isSelf(user.id) && (
+                                  <TooltipContent>
+                                    You cannot delete your own account.
+                                  </TooltipContent>
+                                )}
+                              </Tooltip>
                             </DropdownMenuGroup>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -376,39 +432,41 @@ export function UserManagement() {
                 </TableBody>
               </Table>
               {totalPages > 1 && (
-                <div className="border-t border-border px-4 py-3">
+                <div className="border-border border-t px-4 py-3">
                   <Pagination>
                     <PaginationContent>
                       <PaginationItem>
                         <PaginationPrevious
                           href="#"
                           onClick={(e) => {
-                            e.preventDefault()
-                            setPage((p) => Math.max(1, p - 1))
+                            e.preventDefault();
+                            setPage((p) => Math.max(1, p - 1));
                           }}
                           aria-disabled={page === 1}
                         />
                       </PaginationItem>
-                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-                        <PaginationItem key={p}>
-                          <PaginationLink
-                            href="#"
-                            isActive={p === page}
-                            onClick={(e) => {
-                              e.preventDefault()
-                              setPage(p)
-                            }}
-                          >
-                            {p}
-                          </PaginationLink>
-                        </PaginationItem>
-                      ))}
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                        (p) => (
+                          <PaginationItem key={p}>
+                            <PaginationLink
+                              href="#"
+                              isActive={p === page}
+                              onClick={(e) => {
+                                e.preventDefault();
+                                setPage(p);
+                              }}
+                            >
+                              {p}
+                            </PaginationLink>
+                          </PaginationItem>
+                        ),
+                      )}
                       <PaginationItem>
                         <PaginationNext
                           href="#"
                           onClick={(e) => {
-                            e.preventDefault()
-                            setPage((p) => Math.min(totalPages, p + 1))
+                            e.preventDefault();
+                            setPage((p) => Math.min(totalPages, p + 1));
                           }}
                           aria-disabled={page === totalPages}
                         />
@@ -425,8 +483,8 @@ export function UserManagement() {
       <UserDialog
         open={dialogOpen}
         onOpenChange={(o) => {
-          setDialogOpen(o)
-          if (!o) setDialogError(null)
+          setDialogOpen(o);
+          if (!o) setDialogError(null);
         }}
         user={editing}
         onSave={(values, user) => void handleSave(values, user)}
@@ -438,7 +496,12 @@ export function UserManagement() {
 
       <AlertDialog
         open={Boolean(toDelete)}
-        onOpenChange={(o) => !o && !deleting && setToDelete(null)}
+        onOpenChange={(o) => {
+          if (!o && !deleting) {
+            setToDelete(null);
+            setDeleteError(null);
+          }
+        }}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -448,18 +511,24 @@ export function UserManagement() {
             <AlertDialogTitle>Delete user?</AlertDialogTitle>
             <AlertDialogDescription>
               This will permanently remove{" "}
-              <span className="font-medium text-foreground">
+              <span className="text-foreground font-medium">
                 {toDelete?.name ?? toDelete?.email}
               </span>{" "}
               from your workspace, along with their sessions and linked
               accounts. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {deleteError && (
+            <Alert variant="destructive">
+              <TriangleAlertIcon className="size-4 shrink-0" />
+              <AlertDescription>{deleteError}</AlertDescription>
+            </Alert>
+          )}
           <AlertDialogFooter>
             <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               variant="destructive"
-              className="bg-destructive text-white hover:bg-destructive/90"
+              className="bg-destructive hover:bg-destructive/90 text-white"
               disabled={deleting}
               onClick={() => void handleDelete()}
             >
@@ -469,5 +538,5 @@ export function UserManagement() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
-  )
+  );
 }
