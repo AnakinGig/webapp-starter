@@ -108,6 +108,7 @@ export function AvatarCropDialog({
   const [rotation, setRotation] = useState(0);
   const [pixelCrop, setPixelCrop] = useState<Area | null>(null);
   const [natural, setNatural] = useState<Size | null>(null);
+  const [cropSize, setCropSize] = useState<Size | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -119,6 +120,7 @@ export function AvatarCropDialog({
       setRotation(0);
       setPixelCrop(null);
       setNatural(null);
+      setCropSize(null);
       setSaving(false);
       setError(null);
     }
@@ -206,10 +208,11 @@ export function AvatarCropDialog({
     >
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Adjust your photo</DialogTitle>
+          <DialogTitle>Adjust your photo</DialogTitle>{" "}
           <DialogDescription>
-            Drag to move, scroll or use the slider to zoom, and rotate with the
-            button. Only the framed area is saved.
+            The whole photo is shown with the avatar frame overlaid - the dimmed
+            area will not be in the avatar. Drag to move, scroll or use the
+            slider to zoom, and rotate with the button.
           </DialogDescription>
         </DialogHeader>
 
@@ -223,22 +226,37 @@ export function AvatarCropDialog({
               aspect={1}
               minZoom={1}
               maxZoom={MAX_ZOOM}
-              objectFit="cover"
+              objectFit="contain"
               showGrid={false}
               onCropChange={setCrop}
               onZoomChange={setZoom}
               onRotationChange={setRotation}
               onCropAreaChange={handleCropAreaChange}
+              onCropSizeChange={setCropSize}
               onMediaLoaded={(media) =>
                 setNatural({
                   width: media.naturalWidth,
                   height: media.naturalHeight,
                 })
               }
+              // The overlay ring marks the frame - drop the lib's own 1px
+              // white border so there's a single clean outline.
+              style={{ cropAreaStyle: { border: "none" } }}
             />
           )}
-          {/* The frame itself: what ends up in the avatar */}
-          <div className="ring-primary/70 pointer-events-none absolute inset-0 rounded-xl ring-2 ring-inset" />
+          {/* The frame: what ends up in the avatar. react-easy-crop dims
+              everything outside its crop area and keeps it centered, so a
+              centered overlay of the same size lines up exactly. */}
+          {cropSize && (
+            <div
+              className="ring-primary/70 pointer-events-none absolute top-1/2 left-1/2 ring-2 ring-inset"
+              style={{
+                width: cropSize.width,
+                height: cropSize.height,
+                transform: "translate(-50%, -50%)",
+              }}
+            />
+          )}
         </div>
 
         <div className="flex items-center gap-2">
