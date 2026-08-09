@@ -293,6 +293,7 @@ export function CommandPaletteProvider({
               inputRef={inputRef}
               open={open}
               inline
+              autoHighlight
               filter={filter}
             >
               <div className="flex items-center gap-2.5 border-b px-3">
