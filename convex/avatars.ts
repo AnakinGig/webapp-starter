@@ -25,7 +25,10 @@ import { getAuthUser } from "./users";
  *   untouched.
  */
 
-/** Raster formats only - no SVG (stored XSS risk) and no arbitrary uploads. */
+/** Raster formats only - no SVG (stored XSS risk) and no arbitrary uploads.
+ *  The client converts cropped avatars to WebP (best size/quality for the
+ *  wire); the PNG/JPEG/GIF entries cover the PNG fallback and any clients
+ *  that upload the original file directly. */
 const ALLOWED_CONTENT_TYPES = [
   "image/png",
   "image/jpeg",

@@ -206,9 +206,16 @@ export function AvatarCropDialog({
         rotation,
         EXPORT_SIZE,
       );
-      const blob = await new Promise<Blob | null>((resolve) =>
-        out.toBlob(resolve, "image/png"),
+      // WebP is the best size/quality trade-off for photos. Browsers that
+      // cannot encode WebP return null from toBlob - fall back to PNG.
+      const webp = await new Promise<Blob | null>((resolve) =>
+        out.toBlob(resolve, "image/webp", 0.9),
       );
+      const blob =
+        webp ??
+        (await new Promise<Blob | null>((resolve) =>
+          out.toBlob(resolve, "image/png"),
+        ));
       if (!blob) throw new Error("Could not process the image.");
       await onSave(blob);
     } catch (err) {

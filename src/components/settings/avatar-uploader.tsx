@@ -83,15 +83,20 @@ export function AvatarUploader({
     }
   }
 
-  /** Upload the cropped avatar (always a PNG from the canvas). Errors are
-   *  re-thrown so the crop dialog can display them above the modal. */
+  /** Upload the cropped avatar (a WebP from the canvas, PNG fallback).
+   *  Errors are re-thrown so the crop dialog can display them above the
+   *  modal. */
   async function handleSaveCrop(blob: Blob) {
     setUploading(true);
     try {
       const uploadUrl = await generateUploadUrl();
+      // The content type sent here is what Convex records for the stored
+      // file - send the blob's real type (image/webp, or image/png where
+      // WebP encoding isn't available) so the server allowlist passes.
+      const contentType = blob.type || "image/webp";
       const result = await fetch(uploadUrl, {
         method: "POST",
-        headers: { "Content-Type": "image/png" },
+        headers: { "Content-Type": contentType },
         body: blob,
       });
       if (!result.ok) {
