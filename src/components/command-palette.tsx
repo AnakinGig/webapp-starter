@@ -54,18 +54,18 @@ export function useCommandPalette() {
   return ctx;
 }
 
-function matchesQuery(item: CommandItem, q: string) {
-  return (
-    item.label.toLowerCase().includes(q) ||
-    item.keywords.some((keyword) => keyword.toLowerCase().includes(q))
-  );
-}
-
-function firstMatch(groups: CommandGroup[], q: string): CommandItem | null {
-  for (const group of groups) {
-    const hit = group.items.find((item) => matchesQuery(item, q));
-    if (hit) return hit;
-  }
+// Match rank: lower is better. A label that starts with the query ranks
+// above one that merely contains it; keyword hits rank last. This is what
+// makes type-ahead feel right - "s" anchors Settings (label prefix), not
+// Home (which only matches via a weak keyword like "start").
+function scoreMatch(item: CommandItem, q: string): number | null {
+  const label = item.label.toLowerCase();
+  if (label.startsWith(q)) return 0;
+  if (label.includes(q)) return 1;
+  if (item.keywords.some((keyword) => keyword.toLowerCase().startsWith(q)))
+    return 2;
+  if (item.keywords.some((keyword) => keyword.toLowerCase().includes(q)))
+    return 3;
   return null;
 }
 
@@ -121,6 +121,16 @@ export function CommandPaletteProvider({
     const id = requestAnimationFrame(() => inputRef.current?.focus());
     return () => cancelAnimationFrame(id);
   }, [open]);
+
+  // The best match can sit in a lower group than the first rendered one
+  // (e.g. "u" anchors "Use system theme" below the Pages group), so keep
+  // the highlighted option in view inside the scrollable list.
+  React.useEffect(() => {
+    if (!activeId) return;
+    document.getElementById(`command-${activeId}`)?.scrollIntoView({
+      block: "nearest",
+    });
+  }, [activeId]);
 
   const go = React.useCallback(
     (href: string) => () => {
@@ -266,14 +276,22 @@ export function CommandPaletteProvider({
     return groups;
   }, [session, isAdmin, resolvedTheme, setTheme, go, handleSignOut]);
 
-  // Only the groups/items matching the query are rendered.
+  // Only the groups/items matching the query are rendered, best matches
+  // first within each group (label prefix > label contains > keyword).
   const visibleGroups = React.useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return groups;
     return groups
       .map((group) => ({
         ...group,
-        items: group.items.filter((item) => matchesQuery(item, q)),
+        items: group.items
+          .map((item) => ({ item, score: scoreMatch(item, q) }))
+          .filter(
+            (entry): entry is { item: CommandItem; score: number } =>
+              entry.score !== null,
+          )
+          .sort((a, b) => a.score - b.score)
+          .map((entry) => entry.item),
       }))
       .filter((group) => group.items.length > 0);
   }, [groups, query]);
@@ -291,10 +309,23 @@ export function CommandPaletteProvider({
   const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const value = event.target.value;
     setQuery(value);
-    // Type-ahead: highlight the first matching command on every keystroke,
-    // so typing "d" selects Dashboard immediately, "si" narrows to Sign in.
+    // Type-ahead: highlight the best matching command on every keystroke,
+    // wherever it sits in the list - "u" anchors "Use system theme" even
+    // though the Pages group is rendered above it.
     const q = value.trim().toLowerCase();
-    setActiveId(q ? (firstMatch(groups, q)?.id ?? null) : null);
+    if (!q) {
+      setActiveId(null);
+      return;
+    }
+    let best: { id: string; score: number } | null = null;
+    for (const group of groups) {
+      for (const item of group.items) {
+        const score = scoreMatch(item, q);
+        if (score === null) continue;
+        if (!best || score < best.score) best = { id: item.id, score };
+      }
+    }
+    setActiveId(best?.id ?? null);
   };
 
   const handleInputKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {

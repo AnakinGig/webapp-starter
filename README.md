@@ -34,7 +34,7 @@ Built with **Next.js 15** (App Router) · **Convex** (reactive backend + databas
 - **Convex** functions for all data access - reactive `useQuery`/`useMutation` hooks (no REST/tRPC boilerplate, optimistic updates and realtime for free)
 - Server env validation with `@t3-oss/env-nextjs`; auth secrets live on the Convex deployment
 - shadcn/ui components (base-ui), light/dark/system theming, responsive layout
-- **Command palette** - press `Ctrl+K` (or `Cmd+K` on macOS) anywhere, or click the "Search" button in the header, to jump to any page or run an action (theme, sign out); type the first letters to select (type-ahead: "d" highlights Dashboard, "si" narrows to Sign in), arrow keys + Enter to confirm, `esc` to close
+- **Command palette** - press `Ctrl+K` (or `Cmd+K` on macOS) anywhere, or click the "Search" button in the header, to jump to any page or run an action (theme, sign out); type the first letters to select (type-ahead picks the best match: label prefix > label contains > keyword - "s" highlights Settings, "u" Use system theme, "si" Sign in), arrow keys + Enter to confirm, `esc` to close
 - **Cookie consent banner** with a preferences dialog (GDPR/ePrivacy-ready, choice stored in a `cookie-consent` cookie)
 - CI workflow (`.github/workflows/ci.yaml`) running lint + typecheck on every push
 
