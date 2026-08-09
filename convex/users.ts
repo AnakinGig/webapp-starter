@@ -53,7 +53,7 @@ function toClientUser(doc: UserDoc) {
 type Ctx = QueryCtx | MutationCtx;
 
 /** Current session user (from the better-auth JWT), or null when logged out. */
-async function getAuthUser(ctx: Ctx): Promise<UserDoc | null> {
+export async function getAuthUser(ctx: Ctx): Promise<UserDoc | null> {
   const raw: unknown = await authComponent.safeGetAuthUser(ctx);
   return raw as UserDoc | null;
 }
@@ -79,13 +79,10 @@ async function fetchAllUsers(ctx: Ctx): Promise<UserDoc[]> {
   const users: UserDoc[] = [];
   let cursor: string | null = null;
   for (let i = 0; i < 10; i++) {
-    const result = (await ctx.runQuery(
-      components.betterAuth.adapter.findMany,
-      {
-        model: "user",
-        paginationOpts: { numItems: 200, cursor },
-      },
-    )) as PageResult;
+    const result = (await ctx.runQuery(components.betterAuth.adapter.findMany, {
+      model: "user",
+      paginationOpts: { numItems: 200, cursor },
+    })) as PageResult;
     users.push(...(result.page as unknown as UserDoc[]));
     if (result.isDone) break;
     cursor = result.continueCursor;
@@ -106,7 +103,10 @@ async function findUserById(ctx: Ctx, id: string): Promise<UserDoc | null> {
 }
 
 /** Read a single user by email from the component's user table. */
-async function findUserByEmail(ctx: Ctx, email: string): Promise<UserDoc | null> {
+async function findUserByEmail(
+  ctx: Ctx,
+  email: string,
+): Promise<UserDoc | null> {
   const raw: unknown = await ctx.runQuery(
     components.betterAuth.adapter.findOne,
     {

@@ -27,7 +27,7 @@ Built with **Next.js 15** (App Router) · **Convex** (reactive backend + databas
 - Duplicate emails rejected with inline field errors
 
 **Settings (`/settings`, all signed-in users)**
-- GitHub-style sidebar: **Profile** (name, role, member-since) · **Account** (connected OAuth providers - link/disconnect with confirm dialog) · **Appearance** (light / dark / system) · **Security** (password + sessions)
+- GitHub-style sidebar: **Profile** (photo upload, name, role, member-since) · **Account** (connected OAuth providers - link/disconnect with confirm dialog) · **Appearance** (light / dark / system) · **Security** (password + sessions)
 - **Danger zone** - self-service account deletion with a type-your-email confirmation dialog; last-admin guard, cascades sessions/accounts
 
 **Foundations**
@@ -126,6 +126,7 @@ Both better-auth hooks (`sendVerificationEmail`, `sendResetPassword`) already ca
 ```
 convex/                 # Backend: Convex functions + better-auth component
 ├── auth.ts             # authComponent + auth options: role field, first-user-admin trigger, rate limiting, account linking, OAuth (env-driven)
+├── avatars.ts          # Profile photo upload (storage URL, server-side validation, old-file cleanup)
 ├── oauth.ts            # OAuth provider catalogue + env-driven socialProviders builder
 ├── providers.ts        # public query: which providers are configured (drives login buttons + Settings → Account)
 ├── schema.ts           # App tables (empty - add your domain tables here)
@@ -236,7 +237,7 @@ Everything brand-related lives in **one file: `src/lib/app.ts`**. Edit it and th
 - [x] **Forgot / reset password** - `/forgot-password` requests a one-time link (1h expiry) via `sendResetPassword` (Resend; console-log fallback in dev); `/reset-password` consumes it and sets a new password with `revokeSessionsOnPasswordReset` (all sessions signed out)
 - [x] **Rate limiting** on auth endpoints (sign-in, sign-up, password reset, verification email) - better-auth's built-in limiter backed by the Convex rateLimit table
 - [ ] **Two-factor authentication (TOTP)**
-- [ ] **Profile pictures** (upload + storage - Convex file storage)
+- [x] **Profile pictures** - Settings → Profile photo upload via Convex file storage: PNG/JPG/WEBP/GIF only (no SVG - XSS), 5 MB max, server-side content-type + size validation against the `_storage` system table, replaced/removed files deleted from storage (OAuth avatars left untouched)
 - [ ] **Audit log** of admin actions (who changed what)
 - [x] **Delete-account self-service** in Settings → Profile → Danger zone
 - [ ] **Password re-confirmation** for account deletion (stronger than typing your email, e.g. for stolen-session protection)
@@ -245,6 +246,7 @@ Everything brand-related lives in **one file: `src/lib/app.ts`**. Edit it and th
 ### Nice-to-haves
 
 - [x] Email service (transactional) - Resend wired into verification + reset hooks; still TODO: a React/JSX email template set (e.g. `react-email`) and lifecycle emails
+- [ ] Avatar storage hygiene - the upload URL is open to any signed-in user; a cron that purges orphaned `_storage` files older than N days would cap storage abuse
 - [ ] Dockerfile + deployment guides
 - [ ] i18n
 
