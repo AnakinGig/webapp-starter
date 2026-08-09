@@ -80,7 +80,6 @@ export function CommandPaletteProvider({
   const isAdmin = user?.role === "admin";
 
   const [open, setOpen] = React.useState(false);
-  const [query, setQuery] = React.useState("");
   const inputRef = React.useRef<HTMLInputElement>(null);
 
   // Open/close with Cmd+K (macOS) or Ctrl+K (everywhere else).
@@ -101,12 +100,6 @@ export function CommandPaletteProvider({
       const t = window.setTimeout(() => inputRef.current?.focus(), 0);
       return () => window.clearTimeout(t);
     }
-  }, [open]);
-
-  // Clear the search query whenever the palette closes so it reopens clean
-  // (the combobox's own input resets on unmount, but `query` state persists).
-  React.useEffect(() => {
-    if (!open) setQuery("");
   }, [open]);
 
   const go = React.useCallback(
@@ -132,8 +125,8 @@ export function CommandPaletteProvider({
       });
   }, [router]);
 
-  // useMemo keeps item identities stable while typing (every keystroke
-  // re-renders via `query`) so the combobox highlight doesn't reset.
+  // useMemo keeps item identities stable across re-renders so the combobox
+  // doesn't lose the keyboard highlight while the list re-renders.
   const groups = React.useMemo(() => {
     const groups: CommandGroup[] = [
       {
@@ -258,20 +251,6 @@ export function CommandPaletteProvider({
     return groups;
   }, [session, isAdmin, resolvedTheme, setTheme, go, handleSignOut]);
 
-  const items = groups.flatMap((group) => group.items);
-
-  // Hide a group label when every item in it has been filtered out. This is
-  // cosmetic only - the combobox does the actual filtering.
-  const visibleGroups = groups.filter((group) => {
-    const q = query.trim().toLowerCase();
-    if (!q) return true;
-    return group.items.some(
-      (item) =>
-        item.label.toLowerCase().includes(q) ||
-        item.keywords.join(" ").toLowerCase().includes(q),
-    );
-  });
-
   return (
     <CommandPaletteContext.Provider value={{ setOpen }}>
       {children}
@@ -281,19 +260,23 @@ export function CommandPaletteProvider({
           <Dialog.Backdrop className="data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0 fixed inset-0 z-50 bg-black/40 backdrop-blur-xs duration-100" />
           <Dialog.Popup className="bg-popover text-popover-foreground ring-foreground/10 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95 fixed top-[12vh] left-1/2 z-50 w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 overflow-hidden rounded-xl border shadow-xl ring-1 duration-100 outline-none">
             <Combobox.Root
-              items={items}
+              items={groups}
               onValueChange={(value: CommandItem | null) => {
                 if (value) {
                   value.action();
                 }
               }}
-              onInputValueChange={(inputValue) => setQuery(inputValue)}
               onOpenChange={setOpen}
               itemToStringLabel={(item) => item.label}
               inputRef={inputRef}
               open={open}
               inline
               autoHighlight
+              // The mouse must not steal the type-ahead highlight: hover
+              // would set an active item and block autoHighlight from
+              // picking the first match on the next keystroke. Clicking an
+              // item still selects it (Combobox.Item.onClick).
+              highlightItemOnHover={false}
               filter={filter}
             >
               <div className="flex items-center gap-2.5 border-b px-3">
@@ -304,13 +287,17 @@ export function CommandPaletteProvider({
                 />
               </div>
 
+              {/* Function children render only the filtered items (Base UI
+                  maps them over `filteredItems`), so group labels disappear
+                  when their group has no matches and typing "d" narrows the
+                  list to Dashboard alone. */}
               <Combobox.List className="max-h-72 overflow-y-auto p-1.5">
-                {visibleGroups.map((group) => (
+                {(group: CommandGroup) => (
                   <Combobox.Group key={group.id}>
                     <Combobox.GroupLabel className="text-muted-foreground px-2 py-1.5 text-xs font-medium">
                       {group.label}
                     </Combobox.GroupLabel>
-                    {group.items.map((item) => (
+                    {group.items.map((item: CommandItem) => (
                       <Combobox.Item
                         key={item.id}
                         value={item}
@@ -323,12 +310,12 @@ export function CommandPaletteProvider({
                       </Combobox.Item>
                     ))}
                   </Combobox.Group>
-                ))}
-
-                <Combobox.Empty className="text-muted-foreground px-2 py-6 text-center text-sm">
-                  No results found.
-                </Combobox.Empty>
+                )}
               </Combobox.List>
+
+              <Combobox.Empty className="text-muted-foreground px-2 py-6 text-center text-sm">
+                No results found.
+              </Combobox.Empty>
 
               <div className="text-muted-foreground flex items-center gap-4 border-t px-3 py-2 text-xs">
                 <span className="flex items-center gap-1">
