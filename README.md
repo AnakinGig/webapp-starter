@@ -237,7 +237,7 @@ Everything brand-related lives in **one file: `src/lib/app.ts`**. Edit it and th
 - [x] **Forgot / reset password** - `/forgot-password` requests a one-time link (1h expiry) via `sendResetPassword` (Resend; console-log fallback in dev); `/reset-password` consumes it and sets a new password with `revokeSessionsOnPasswordReset` (all sessions signed out)
 - [x] **Rate limiting** on auth endpoints (sign-in, sign-up, password reset, verification email) - better-auth's built-in limiter backed by the Convex rateLimit table
 - [ ] **Two-factor authentication (TOTP)**
-- [x] **Profile pictures** - Settings → Profile photo upload via Convex file storage: PNG/JPG/WEBP/GIF only (no SVG - XSS), 5 MB max, server-side content-type + size validation against the `_storage` system table, replaced/removed files deleted from storage (OAuth avatars left untouched). Pick or drag & drop a photo, then crop it in an editor (drag to pan, scroll/slider to zoom, live preview) - the visible frame is exported as a 512×512 PNG
+- [x] **Profile pictures** - Settings → Profile photo upload via Convex file storage: PNG/JPG/WEBP/GIF only (no SVG - XSS), 5 MB max, server-side content-type + size validation against the `_storage` system table, replaced/removed files deleted from storage (OAuth avatars left untouched). Pick or drag & drop a photo, then crop it in an editor built on **react-easy-crop** (drag to pan, scroll/slider/pinch to zoom, 90° rotation, live preview) - the visible frame is exported as a 512×512 PNG
 - [ ] **Audit log** of admin actions (who changed what)
 - [x] **Delete-account self-service** in Settings → Profile → Danger zone
 - [ ] **Password re-confirmation** for account deletion (stronger than typing your email, e.g. for stolen-session protection)
