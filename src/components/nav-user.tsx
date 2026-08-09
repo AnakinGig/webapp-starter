@@ -1,11 +1,11 @@
-"use client"
+"use client";
 
-import Link from "next/link"
-import { useRouter } from "next/navigation"
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 
-import { authClient } from "@/lib/auth-client"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Button } from "@/components/ui/button"
+import { authClient } from "@/lib/auth-client";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,38 +14,40 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { CircleUserRound, LogOut, Settings, ChevronDown } from "lucide-react"
+} from "@/components/ui/dropdown-menu";
+import { CircleUserRound, LogOut, Settings } from "lucide-react";
 
 export function NavUser() {
-  const router = useRouter()
-  const { data: session } = authClient.useSession()
-  const user = session?.user
-  const isAdmin = user?.role === "admin"
-  const name = user?.name ?? user?.email ?? "User"
-  const email = user?.email ?? ""
-  const initial = name.charAt(0).toUpperCase()
+  const router = useRouter();
+  const { data: session } = authClient.useSession();
+  const user = session?.user;
+  const isAdmin = user?.role === "admin";
+  const name = user?.name ?? user?.email ?? "User";
+  const email = user?.email ?? "";
+  const initial = name.charAt(0).toUpperCase();
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
-            render={
-              <Button variant="ghost" size="lg" className="data-[state=open]:bg-accent data-[state=open]:text-accent-foreground w-full justify-start gap-2 px-2 h-auto py-2 my-1">
-                <Avatar className="size-8 rounded-lg">
-                  {user?.image ? (
-                    <AvatarImage src={user.image} alt={name} />
-                  ) : (
-                    <AvatarFallback className="rounded-lg">{initial}</AvatarFallback>
-                  )}
-                </Avatar>
-                <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-medium">{name}</span>
-                  <span className="truncate text-xs text-muted-foreground">{email}</span>
-                </div>
-                <ChevronDown className="ml-auto size-4" />
-              </Button>
-            }
-          />
+        render={
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label={`Open menu for ${name}`}
+            className="data-[state=open]:bg-accent data-[state=open]:text-accent-foreground"
+          >
+            <Avatar className="size-8 rounded-lg">
+              {user?.image ? (
+                <AvatarImage src={user.image} alt={name} />
+              ) : (
+                <AvatarFallback className="rounded-lg">
+                  {initial}
+                </AvatarFallback>
+              )}
+            </Avatar>
+          </Button>
+        }
+      />
       <DropdownMenuContent
         className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg"
         align="end"
@@ -58,12 +60,16 @@ export function NavUser() {
                 {user?.image ? (
                   <AvatarImage src={user.image} alt={name} />
                 ) : (
-                  <AvatarFallback className="rounded-lg">{initial}</AvatarFallback>
+                  <AvatarFallback className="rounded-lg">
+                    {initial}
+                  </AvatarFallback>
                 )}
               </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-medium">{name}</span>
-                <span className="truncate text-xs text-muted-foreground">{email}</span>
+                <span className="text-muted-foreground truncate text-xs">
+                  {email}
+                </span>
               </div>
             </div>
           </DropdownMenuLabel>
@@ -91,13 +97,13 @@ export function NavUser() {
             void authClient
               .signOut()
               .then(() => {
-                router.push("/")
-                router.refresh()
+                router.push("/");
+                router.refresh();
               })
               .catch(() => {
                 // If the request fails, keep the user on the page - the
                 // session is still valid and the queries keep working.
-              })
+              });
           }}
         >
           <LogOut className="size-4" />
@@ -105,5 +111,5 @@ export function NavUser() {
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
-  )
+  );
 }
