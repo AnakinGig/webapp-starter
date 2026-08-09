@@ -3,11 +3,19 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation } from "convex/react";
 import { type GenericId } from "convex/values";
-import { ImagePlus, LoaderCircle, Trash2 } from "lucide-react";
+import { Camera, ImagePlus, LoaderCircle, Trash2 } from "lucide-react";
 
 import { api } from "@/convex/_generated/api";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { AvatarCropDialog } from "./avatar-crop-dialog";
 
@@ -32,6 +40,7 @@ export function AvatarUploader({
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
+  const [photoOpen, setPhotoOpen] = useState(false);
   const [cropOpen, setCropOpen] = useState(false);
   const [cropUrl, setCropUrl] = useState<string | null>(null);
 
@@ -57,10 +66,14 @@ export function AvatarUploader({
     // Fast client-side checks (the server re-validates).
     if (!ACCEPTED_TYPES.includes(file.type)) {
       setError("Only PNG, JPEG, WEBP or GIF images are allowed.");
+      // The error renders inside the photo dialog - open it if a bad file
+      // was dropped straight onto the avatar so the message is visible.
+      setPhotoOpen(true);
       return;
     }
     if (file.size > MAX_SIZE) {
       setError("Image must be 5 MB or smaller.");
+      setPhotoOpen(true);
       return;
     }
 
@@ -68,6 +81,8 @@ export function AvatarUploader({
     const url = URL.createObjectURL(file);
     cropUrlRef.current = url;
     setCropUrl(url);
+    // Close the photo dialog so the crop editor can open on top of it.
+    setPhotoOpen(false);
     setCropOpen(true);
   }
 
@@ -132,10 +147,10 @@ export function AvatarUploader({
   }
 
   return (
-    <div className="flex flex-col gap-3">
+    <>
       <div
         className={cn(
-          "-m-1.5 flex flex-wrap items-center gap-4 rounded-xl p-1.5 transition-colors",
+          "-m-1.5 rounded-xl p-1.5 transition-colors",
           dragging && "bg-primary/5 ring-primary/50 ring-2 ring-inset",
         )}
         onDragOver={(event) => {
@@ -158,52 +173,32 @@ export function AvatarUploader({
           if (file) handleFile(file);
         }}
       >
-        <Avatar className="size-20 rounded-lg">
-          {current ? (
-            <AvatarImage src={current} alt={name} />
-          ) : (
-            <AvatarFallback className="rounded-lg text-xl">
-              {initial}
-            </AvatarFallback>
-          )}
-        </Avatar>
-        <div className="flex flex-col items-start gap-2">
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={uploading}
-              onClick={() => fileInputRef.current?.click()}
-            >
-              {uploading ? (
-                <LoaderCircle className="size-4 animate-spin" />
-              ) : (
-                <ImagePlus className="size-4" />
-              )}
-              {uploading ? "Uploading…" : "Change photo"}
-            </Button>
-            {image && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="text-muted-foreground"
-                disabled={uploading}
-                onClick={() => void handleRemove()}
-              >
-                <Trash2 className="size-4" />
-                Remove
-              </Button>
+        <button
+          type="button"
+          aria-label={image ? "Change your photo" : "Add a photo"}
+          aria-haspopup="dialog"
+          className="group focus-visible:ring-ring relative block cursor-pointer rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+          onClick={() => setPhotoOpen(true)}
+        >
+          <Avatar className="size-20 rounded-lg">
+            {current ? (
+              <AvatarImage src={current} alt={name} />
+            ) : (
+              <AvatarFallback className="rounded-lg text-xl">
+                {initial}
+              </AvatarFallback>
             )}
-          </div>
-          <p className="text-muted-foreground text-xs">
-            {dragging
-              ? "Drop to change your photo"
-              : "Drag & drop or click - JPG, PNG, WEBP or GIF, 5 MB max."}
-          </p>
-        </div>
+          </Avatar>
+          {/* Hover / focus overlay: "click to change" affordance */}
+          <span
+            aria-hidden="true"
+            className="absolute inset-0 flex items-center justify-center rounded-lg bg-black/45 text-white opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100"
+          >
+            <Camera className="size-5" />
+          </span>
+        </button>
       </div>
+
       <input
         ref={fileInputRef}
         type="file"
@@ -216,11 +211,115 @@ export function AvatarUploader({
           event.target.value = "";
         }}
       />
-      {error && (
-        <p role="alert" className="text-destructive text-sm">
-          {error}
-        </p>
-      )}
+
+      {/* All photo controls live in this dialog, keeping the profile clean. */}
+      <Dialog open={photoOpen} onOpenChange={setPhotoOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Change your photo</DialogTitle>
+            <DialogDescription>
+              Upload a new photo or remove the current one. You can crop it
+              before saving.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center gap-3">
+              <Avatar className="size-16 rounded-lg">
+                {current ? (
+                  <AvatarImage src={current} alt={name} />
+                ) : (
+                  <AvatarFallback className="rounded-lg text-lg">
+                    {initial}
+                  </AvatarFallback>
+                )}
+              </Avatar>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium">{name}</p>
+                <p className="text-muted-foreground text-xs">
+                  JPG, PNG, WEBP or GIF - 5 MB max
+                </p>
+              </div>
+            </div>
+
+            <div
+              className={cn(
+                "border-border flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-lg border-2 border-dashed p-6 text-center transition-colors",
+                dragging && "border-primary bg-primary/5",
+              )}
+              onClick={() => fileInputRef.current?.click()}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  fileInputRef.current?.click();
+                }
+              }}
+              onDragOver={(event) => {
+                if (uploading) return;
+                event.preventDefault();
+                setDragging(true);
+              }}
+              onDragLeave={(event) => {
+                if (event.currentTarget.contains(event.relatedTarget as Node)) {
+                  return;
+                }
+                setDragging(false);
+              }}
+              onDrop={(event) => {
+                event.preventDefault();
+                setDragging(false);
+                const file = event.dataTransfer.files?.[0];
+                if (file) handleFile(file);
+              }}
+              role="button"
+              tabIndex={0}
+              aria-label="Upload a new photo"
+            >
+              {uploading ? (
+                <LoaderCircle className="size-5 animate-spin" />
+              ) : (
+                <ImagePlus className="size-5" />
+              )}
+              <span className="text-sm font-medium">
+                {uploading ? "Uploading…" : "Upload new photo"}
+              </span>
+              <span className="text-muted-foreground text-xs">
+                or drag &amp; drop it here
+              </span>
+            </div>
+
+            {image && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="text-destructive hover:text-destructive w-fit"
+                disabled={uploading}
+                onClick={() => void handleRemove()}
+              >
+                <Trash2 className="size-4" />
+                Remove photo
+              </Button>
+            )}
+
+            {error && (
+              <p role="alert" className="text-destructive text-sm">
+                {error}
+              </p>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setPhotoOpen(false)}
+            >
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <AvatarCropDialog
         open={cropOpen}
@@ -228,6 +327,6 @@ export function AvatarUploader({
         onClose={closeEditor}
         onSave={handleSaveCrop}
       />
-    </div>
+    </>
   );
 }
