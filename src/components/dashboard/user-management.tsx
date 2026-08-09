@@ -1,7 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect, useMemo, type ComponentType } from "react";
+import {
+  Component,
+  useEffect,
+  useMemo,
+  useState,
+  type ComponentType,
+  type ReactNode,
+} from "react";
 import {
   MoreHorizontalIcon,
   PencilIcon,
@@ -14,7 +21,7 @@ import {
   MailCheckIcon,
 } from "lucide-react";
 import { toast } from "sonner";
-import { useMutation, useQuery } from "convex/react";
+import { useConvexAuth, useMutation, useQuery } from "convex/react";
 
 import { api } from "@/convex/_generated/api";
 import { UserDialog } from "@/components/dashboard/user-dialog";
@@ -100,6 +107,114 @@ function errorMessage(err: unknown, fallback: string): string {
   return fallback;
 }
 
+/** Shown when the caller isn't an admin (or the session died) - the layout
+ *  redirects on the next navigation; this keeps the page usable meanwhile. */
+function AccessRequired({ onRetry }: { onRetry?: () => void }) {
+  return (
+    <Empty className="py-16">
+      <EmptyHeader>
+        <EmptyMedia variant="icon">
+          <UsersIcon />
+        </EmptyMedia>
+        <EmptyTitle>Access required</EmptyTitle>
+        <EmptyDescription>
+          Your session has ended or you no longer have admin access. Sign back
+          in to manage users.
+        </EmptyDescription>
+      </EmptyHeader>
+      <div className="flex flex-wrap items-center justify-center gap-2">
+        <Button render={<Link href="/login" />}>Sign in</Button>
+        {onRetry && (
+          <Button type="button" variant="outline" onClick={onRetry}>
+            Try again
+          </Button>
+        )}
+      </div>
+    </Empty>
+  );
+}
+
+/** True for auth-related Convex errors (invalid session, or the caller lost
+ *  admin access). Those show the access-required state; anything else is a
+ *  genuine failure that gets a generic error state and console logging. */
+function isAuthError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const message = error.message;
+  return (
+    message.includes("Unauthenticated") ||
+    message.includes("Admin access required") ||
+    message.includes("Authentication required")
+  );
+}
+
+/**
+ * useQuery THROWS query errors (ConvexError) during render instead of
+ * returning them (convex >= 1.43). A rejected admin query (stale session
+ * token, session revoked mid-page, admin demoted) would otherwise crash the
+ * whole dashboard. This boundary catches those and shows a fallback instead
+ * of an error page.
+ */
+class AdminQueryBoundary extends Component<
+  { children: ReactNode; authenticated: boolean },
+  { error: Error | null }
+> {
+  state: { error: Error | null } = { error: null };
+
+  static getDerivedStateFromError(error: Error) {
+    return { error };
+  }
+
+  componentDidCatch(error: Error) {
+    // Keep genuine failures visible in the console instead of silently
+    // converting them into a fallback screen.
+    console.error("Dashboard query failed:", error);
+  }
+
+  componentDidUpdate(prevProps: { authenticated: boolean }) {
+    // Auto-recover: the token was rejected, then a refresh succeeded while
+    // the session id stayed the same (so the key didn't remount us) - clear
+    // the error and let the queries re-run.
+    if (
+      this.state.error &&
+      !prevProps.authenticated &&
+      this.props.authenticated
+    ) {
+      this.setState({ error: null });
+    }
+  }
+
+  render() {
+    if (this.state.error) {
+      if (isAuthError(this.state.error)) {
+        return (
+          <AccessRequired onRetry={() => this.setState({ error: null })} />
+        );
+      }
+      return (
+        <Empty className="py-16">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <TriangleAlertIcon />
+            </EmptyMedia>
+            <EmptyTitle>Something went wrong</EmptyTitle>
+            <EmptyDescription>
+              Couldn&apos;t load the user list. Try again, or sign back in.
+            </EmptyDescription>
+          </EmptyHeader>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => this.setState({ error: null })}
+          >
+            Try again
+          </Button>
+        </Empty>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 function StatCard({
   label,
   value,
@@ -127,6 +242,36 @@ function StatCard({
 }
 
 export function UserManagement() {
+  const { data: session, isPending: sessionPending } = authClient.useSession();
+  const convexAuth = useConvexAuth();
+
+  return (
+    // The queries below can throw auth errors during render (useQuery throws
+    // query errors instead of returning them) - the boundary turns a rejected
+    // admin query into a fallback state. Keying by session id remounts it -
+    // clearing any caught error - when the user signs in/out.
+    <AdminQueryBoundary
+      key={session?.user?.id ?? "anon"}
+      authenticated={!convexAuth.isLoading && convexAuth.isAuthenticated}
+    >
+      <UserManagementInner
+        session={session}
+        sessionPending={sessionPending}
+        convexAuth={convexAuth}
+      />
+    </AdminQueryBoundary>
+  );
+}
+
+function UserManagementInner({
+  session,
+  sessionPending,
+  convexAuth,
+}: {
+  session: ReturnType<typeof authClient.useSession>["data"];
+  sessionPending: boolean;
+  convexAuth: ReturnType<typeof useConvexAuth>;
+}) {
   const [page, setPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
@@ -144,12 +289,16 @@ export function UserManagement() {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  const { data: session, isPending: sessionPending } = authClient.useSession();
-  // While the session is missing (initial load, after sign-out, or after being
-  // demoted) the admin queries would fail server-side and useQuery throws
-  // during render, crashing the page. "skip" disables them until the caller is
-  // an admin again.
-  const signedIn = session?.user?.role === "admin";
+  // Gate on Convex's BACKEND-VALIDATED auth state (useConvexAuth), not just
+  // the cached better-auth session: with a stale token (session revoked,
+  // sign-out race) the admin queries would run unauthenticated and useQuery
+  // would throw during render. Queries stay skipped until Convex has
+  // confirmed the token against the server.
+  const signedIn =
+    !sessionPending &&
+    !convexAuth.isLoading &&
+    convexAuth.isAuthenticated &&
+    session?.user?.role === "admin";
 
   const usersResult = useQuery(
     api.users.getMany,
@@ -173,25 +322,10 @@ export function UserManagement() {
   const usersLoading = usersResult === undefined;
   const statsLoading = stats === undefined;
 
-  // Session confirmed gone (e.g. after sign-out): the queries are skipped, so
-  // render a fallback instead of the admin table. The layout redirects on the
-  // next navigation, but this keeps the page usable in the meantime.
-  if (!sessionPending && !signedIn) {
-    return (
-      <Empty className="py-16">
-        <EmptyHeader>
-          <EmptyMedia variant="icon">
-            <UsersIcon />
-          </EmptyMedia>
-          <EmptyTitle>Access required</EmptyTitle>
-          <EmptyDescription>
-            Your session has ended or you no longer have admin access. Sign back
-            in to manage users.
-          </EmptyDescription>
-        </EmptyHeader>
-        <Button render={<Link href="/login" />}>Sign in</Button>
-      </Empty>
-    );
+  // Session confirmed gone or the token rejected (e.g. after sign-out): the
+  // queries are skipped, so render a fallback instead of the admin table.
+  if (!sessionPending && !convexAuth.isLoading && !signedIn) {
+    return <AccessRequired />;
   }
 
   async function handleSave(
