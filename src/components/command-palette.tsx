@@ -3,7 +3,6 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { Dialog } from "@base-ui/react/dialog";
-import { Combobox } from "@base-ui/react/combobox";
 import { useTheme } from "next-themes";
 import {
   Cookie,
@@ -24,6 +23,7 @@ import {
 
 import { authClient } from "@/lib/auth-client";
 import { appSettings } from "@/lib/app";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
 type CommandItem = {
@@ -41,7 +41,7 @@ type CommandGroup = {
 };
 
 const CommandPaletteContext = React.createContext<{
-  setOpen: (open: boolean) => void;
+  openPalette: () => void;
 } | null>(null);
 
 export function useCommandPalette() {
@@ -54,19 +54,20 @@ export function useCommandPalette() {
   return ctx;
 }
 
-const filter: NonNullable<Combobox.Root.Props<CommandItem>["filter"]> = (
-  itemValue,
-  query,
-  itemToString,
-) => {
-  const q = query.trim().toLowerCase();
-  if (!q) return true;
-  const label = (
-    itemToString ? itemToString(itemValue) : itemValue.label
-  ).toLowerCase();
-  const keywords = itemValue.keywords.join(" ").toLowerCase();
-  return label.includes(q) || keywords.includes(q);
-};
+function matchesQuery(item: CommandItem, q: string) {
+  return (
+    item.label.toLowerCase().includes(q) ||
+    item.keywords.some((keyword) => keyword.toLowerCase().includes(q))
+  );
+}
+
+function firstMatch(groups: CommandGroup[], q: string): CommandItem | null {
+  for (const group of groups) {
+    const hit = group.items.find((item) => matchesQuery(item, q));
+    if (hit) return hit;
+  }
+  return null;
+}
 
 export function CommandPaletteProvider({
   children,
@@ -80,30 +81,55 @@ export function CommandPaletteProvider({
   const isAdmin = user?.role === "admin";
 
   const [open, setOpen] = React.useState(false);
+  const [query, setQuery] = React.useState("");
+  const [activeId, setActiveId] = React.useState<string | null>(null);
   const inputRef = React.useRef<HTMLInputElement>(null);
+
+  const openPalette = React.useCallback(() => {
+    setQuery("");
+    setActiveId(null);
+    setOpen(true);
+  }, []);
+
+  const closePalette = React.useCallback(() => {
+    setOpen(false);
+    setQuery("");
+    setActiveId(null);
+  }, []);
 
   // Open/close with Cmd+K (macOS) or Ctrl+K (everywhere else).
   React.useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
-        setOpen((prev) => !prev);
+        if (open) {
+          closePalette();
+        } else {
+          openPalette();
+        }
       }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
+  }, [open, openPalette, closePalette]);
+
+  // Focus the input the moment the palette opens so the first keystroke
+  // lands in it (no focus race). autoFocus on the input covers the initial
+  // mount; this effect also re-focuses after the open transition.
+  React.useEffect(() => {
+    if (!open) return;
+    const id = requestAnimationFrame(() => inputRef.current?.focus());
+    return () => cancelAnimationFrame(id);
+  }, [open]);
 
   const go = React.useCallback(
     (href: string) => () => {
-      setOpen(false);
       router.push(href);
     },
     [router],
   );
 
   const handleSignOut = React.useCallback(() => {
-    setOpen(false);
     // Leave the current page immediately after the session is cleared so
     // protected queries don't re-run without a token.
     void authClient
@@ -117,8 +143,7 @@ export function CommandPaletteProvider({
       });
   }, [router]);
 
-  // useMemo keeps item identities stable across re-renders so the combobox
-  // doesn't lose the keyboard highlight while the list re-renders.
+  // useMemo keeps item identities stable across re-renders.
   const groups = React.useMemo(() => {
     const groups: CommandGroup[] = [
       {
@@ -195,7 +220,6 @@ export function CommandPaletteProvider({
               ),
             action: () => {
               setTheme(resolvedTheme === "dark" ? "light" : "dark");
-              setOpen(false);
             },
           },
           {
@@ -205,7 +229,6 @@ export function CommandPaletteProvider({
             icon: <Monitor className="size-4" />,
             action: () => {
               setTheme("system");
-              setOpen(false);
             },
           },
           ...(session
@@ -225,7 +248,7 @@ export function CommandPaletteProvider({
         id: "legal",
         label: "Legal",
         items: appSettings.footerNav.legal.map((link) => ({
-          id: link.href,
+          id: link.href.replace(/[^a-z0-9]+/gi, "-").replace(/^-+|-+$/g, ""),
           label: link.label,
           keywords: [link.label.toLowerCase(), "legal"],
           icon:
@@ -243,99 +266,163 @@ export function CommandPaletteProvider({
     return groups;
   }, [session, isAdmin, resolvedTheme, setTheme, go, handleSignOut]);
 
+  // Only the groups/items matching the query are rendered.
+  const visibleGroups = React.useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return groups;
+    return groups
+      .map((group) => ({
+        ...group,
+        items: group.items.filter((item) => matchesQuery(item, q)),
+      }))
+      .filter((group) => group.items.length > 0);
+  }, [groups, query]);
+
+  const visibleIds = React.useMemo(
+    () => visibleGroups.flatMap((group) => group.items.map((item) => item.id)),
+    [visibleGroups],
+  );
+
+  const runItem = (item: CommandItem) => {
+    item.action();
+    closePalette();
+  };
+
+  const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const value = event.target.value;
+    setQuery(value);
+    // Type-ahead: highlight the first matching command on every keystroke,
+    // so typing "d" selects Dashboard immediately, "si" narrows to Sign in.
+    const q = value.trim().toLowerCase();
+    setActiveId(q ? (firstMatch(groups, q)?.id ?? null) : null);
+  };
+
+  const handleInputKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      if (visibleIds.length === 0) return;
+      const current = visibleIds.indexOf(activeId ?? "");
+      // Wrap around: ArrowDown from the last item (or from nothing) goes to
+      // the first, ArrowUp from nothing goes to the last.
+      const next =
+        event.key === "ArrowDown"
+          ? (current + 1) % visibleIds.length
+          : current <= 0
+            ? visibleIds.length - 1
+            : current - 1;
+      setActiveId(visibleIds[next] ?? null);
+    } else if (event.key === "Enter") {
+      const active = visibleGroups
+        .flatMap((group) => group.items)
+        .find((item) => item.id === activeId);
+      if (active) {
+        event.preventDefault();
+        runItem(active);
+      }
+    }
+  };
+
   return (
-    <CommandPaletteContext.Provider value={{ setOpen }}>
+    <CommandPaletteContext.Provider value={{ openPalette }}>
       {children}
 
       <Dialog.Root open={open} onOpenChange={setOpen}>
         <Dialog.Portal>
           <Dialog.Backdrop className="data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0 fixed inset-0 z-50 bg-black/40 backdrop-blur-xs duration-100" />
-          <Dialog.Popup
-            initialFocus={inputRef}
-            className="bg-popover text-popover-foreground ring-foreground/10 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95 fixed top-[12vh] left-1/2 z-50 w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 overflow-hidden rounded-xl border shadow-xl ring-1 duration-100 outline-none"
-          >
-            <Combobox.Root
-              items={groups}
-              onValueChange={(value: CommandItem | null) => {
-                if (value) {
-                  value.action();
+          <Dialog.Popup className="bg-popover text-popover-foreground ring-foreground/10 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95 fixed top-[12vh] left-1/2 z-50 w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 overflow-hidden rounded-xl border shadow-xl ring-1 duration-100 outline-none">
+            <div className="flex items-center gap-2.5 border-b px-3">
+              <Search className="text-muted-foreground size-4 shrink-0" />
+              <input
+                ref={inputRef}
+                autoFocus
+                value={query}
+                onChange={handleInputChange}
+                onKeyDown={handleInputKeyDown}
+                placeholder="Type a command or search..."
+                role="combobox"
+                aria-expanded={open}
+                aria-controls="command-palette-list"
+                aria-activedescendant={
+                  activeId ? `command-${activeId}` : undefined
                 }
-              }}
-              onOpenChange={setOpen}
-              itemToStringLabel={(item) => item.label}
-              inputRef={inputRef}
-              open={open}
-              inline
-              autoHighlight
-              // The mouse must not steal the type-ahead highlight: hover
-              // would set an active item and block autoHighlight from
-              // picking the first match on the next keystroke. Clicking an
-              // item still selects it (Combobox.Item.onClick).
-              highlightItemOnHover={false}
-              filter={filter}
+                className="placeholder:text-muted-foreground h-11 w-full bg-transparent text-sm outline-none"
+              />
+            </div>
+
+            <div
+              id="command-palette-list"
+              role="listbox"
+              className="max-h-72 overflow-y-auto p-1.5"
             >
-              <div className="flex items-center gap-2.5 border-b px-3">
-                <Search className="text-muted-foreground size-4 shrink-0" />
-                <Combobox.Input
-                  placeholder="Type a command or search..."
-                  className="placeholder:text-muted-foreground h-11 w-full bg-transparent text-sm outline-none"
-                />
-              </div>
-
-              {/* Function children render only the filtered items (Base UI
-                  maps them over `filteredItems`), so group labels disappear
-                  when their group has no matches and typing "d" narrows the
-                  list to Dashboard alone. */}
-              <Combobox.List className="max-h-72 overflow-y-auto p-1.5">
-                {(group: CommandGroup) => (
-                  <Combobox.Group key={group.id}>
-                    <Combobox.GroupLabel className="text-muted-foreground px-2 py-1.5 text-xs font-medium">
+              {visibleGroups.length > 0 ? (
+                visibleGroups.map((group) => (
+                  <div key={group.id} role="group" aria-label={group.label}>
+                    <div className="text-muted-foreground px-2 py-1.5 text-xs font-medium">
                       {group.label}
-                    </Combobox.GroupLabel>
-                    {group.items.map((item: CommandItem) => (
-                      <Combobox.Item
-                        key={item.id}
-                        value={item}
-                        className="group data-highlighted:bg-accent data-highlighted:text-accent-foreground flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 text-sm outline-none select-none"
-                      >
-                        <span className="text-muted-foreground group-data-highlighted:text-accent-foreground flex size-5 shrink-0 items-center justify-center [&_svg]:size-4">
-                          {item.icon}
-                        </span>
-                        <span className="truncate">{item.label}</span>
-                      </Combobox.Item>
-                    ))}
-                  </Combobox.Group>
-                )}
-              </Combobox.List>
+                    </div>
+                    {group.items.map((item) => {
+                      const active = item.id === activeId;
+                      return (
+                        <button
+                          key={item.id}
+                          id={`command-${item.id}`}
+                          type="button"
+                          role="option"
+                          tabIndex={-1}
+                          aria-selected={active}
+                          onMouseEnter={() => setActiveId(item.id)}
+                          onClick={() => runItem(item)}
+                          className={cn(
+                            "flex w-full cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 text-sm outline-none select-none",
+                            active
+                              ? "bg-accent text-accent-foreground"
+                              : "text-popover-foreground",
+                          )}
+                        >
+                          <span
+                            className={cn(
+                              "text-muted-foreground flex size-5 shrink-0 items-center justify-center [&_svg]:size-4",
+                              active && "text-accent-foreground",
+                            )}
+                          >
+                            {item.icon}
+                          </span>
+                          <span className="truncate">{item.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ))
+              ) : (
+                <div className="text-muted-foreground px-2 py-6 text-center text-sm">
+                  No results found.
+                </div>
+              )}
+            </div>
 
-              <Combobox.Empty className="text-muted-foreground px-2 py-6 text-center text-sm">
-                No results found.
-              </Combobox.Empty>
-
-              <div className="text-muted-foreground flex items-center gap-4 border-t px-3 py-2 text-xs">
-                <span className="flex items-center gap-1">
-                  <kbd className="bg-muted rounded border px-1.5 py-0.5 font-mono text-[10px]">
-                    ↑
-                  </kbd>
-                  <kbd className="bg-muted rounded border px-1.5 py-0.5 font-mono text-[10px]">
-                    ↓
-                  </kbd>
-                  Navigate
-                </span>
-                <span className="flex items-center gap-1">
-                  <kbd className="bg-muted rounded border px-1.5 py-0.5 font-mono text-[10px]">
-                    <CornerDownLeft className="size-2.5" />
-                  </kbd>
-                  Select
-                </span>
-                <span className="flex items-center gap-1">
-                  <kbd className="bg-muted rounded border px-1.5 py-0.5 font-mono text-[10px]">
-                    esc
-                  </kbd>
-                  Close
-                </span>
-              </div>
-            </Combobox.Root>
+            <div className="text-muted-foreground flex items-center gap-4 border-t px-3 py-2 text-xs">
+              <span className="flex items-center gap-1">
+                <kbd className="bg-muted rounded border px-1.5 py-0.5 font-mono text-[10px]">
+                  ↑
+                </kbd>
+                <kbd className="bg-muted rounded border px-1.5 py-0.5 font-mono text-[10px]">
+                  ↓
+                </kbd>
+                Navigate
+              </span>
+              <span className="flex items-center gap-1">
+                <kbd className="bg-muted rounded border px-1.5 py-0.5 font-mono text-[10px]">
+                  <CornerDownLeft className="size-2.5" />
+                </kbd>
+                Select
+              </span>
+              <span className="flex items-center gap-1">
+                <kbd className="bg-muted rounded border px-1.5 py-0.5 font-mono text-[10px]">
+                  esc
+                </kbd>
+                Close
+              </span>
+            </div>
           </Dialog.Popup>
         </Dialog.Portal>
       </Dialog.Root>
@@ -344,7 +431,7 @@ export function CommandPaletteProvider({
 }
 
 export function CommandPaletteTrigger() {
-  const { setOpen } = useCommandPalette();
+  const { openPalette } = useCommandPalette();
   const [isMac, setIsMac] = React.useState(false);
 
   React.useEffect(() => {
@@ -356,7 +443,7 @@ export function CommandPaletteTrigger() {
       <Button
         variant="outline"
         size="sm"
-        onClick={() => setOpen(true)}
+        onClick={openPalette}
         aria-label={
           isMac
             ? "Open command palette (Cmd+K)"
@@ -375,7 +462,7 @@ export function CommandPaletteTrigger() {
       <Button
         variant="ghost"
         size="icon-sm"
-        onClick={() => setOpen(true)}
+        onClick={openPalette}
         aria-label={
           isMac
             ? "Open command palette (Cmd+K)"

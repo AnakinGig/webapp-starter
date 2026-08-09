@@ -144,7 +144,7 @@ src/
 │   ├── ui/             # shadcn/ui primitives
 │   ├── settings/       # settings page sections (profile, account, appearance, security)
 │   ├── dashboard/      # admin user-management UI
-│   ├── command-palette.tsx # global Ctrl+K command palette (Dialog + Combobox)
+│   ├── command-palette.tsx # global Ctrl+K command palette (Dialog + plain input, self-managed type-ahead)
 │   ├── site-header.tsx # header with nav, theme toggle, command-palette trigger
 │   └── nav-user.tsx    # signed-in user menu
 ├── lib/
