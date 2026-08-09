@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Card,
   CardContent,
@@ -69,9 +70,22 @@ export function ProfileSection() {
     return () => clearInterval(timer);
   }, [verifyCooldown]);
 
+  useEffect(() => {
+    void authClient.listAccounts().then(({ data, error }) => {
+      if (!error) {
+        setHasPassword((data ?? []).some((a) => a.providerId === "credential"));
+      }
+    });
+  }, []);
+
   // Danger zone state
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [confirmEmail, setConfirmEmail] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [confirmChecked, setConfirmChecked] = useState(false);
+  // Whether this account has an email/password sign-in. Only those users are
+  // asked for their password when deleting the account; OAuth-only accounts
+  // confirm with a checkbox instead. null = still loading.
+  const [hasPassword, setHasPassword] = useState<boolean | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const deleteAccount = useMutation(api.users.deleteAccount);
   const convex = useConvex();
@@ -202,17 +216,24 @@ export function ProfileSection() {
     e.preventDefault();
     if (!user) return;
 
-    // Client-side check first (fast feedback); the server re-validates.
-    // Case-insensitive: emails are stored normalized to lowercase.
-    if (confirmEmail.trim().toLowerCase() !== user.email.toLowerCase()) {
-      setDeleteError("The email you typed doesn't match your account email.");
+    // Client-side check first (fast feedback); the server re-verifies the
+    // password before deleting.
+    if (hasPassword !== false) {
+      if (!confirmPassword) {
+        setDeleteError("Enter your password to confirm.");
+        return;
+      }
+    } else if (!confirmChecked) {
+      setDeleteError("Confirm that you understand this is permanent.");
       return;
     }
 
     setDeleteError(null);
     setDeletingAccount(true);
     try {
-      await deleteAccount();
+      await deleteAccount({
+        password: hasPassword === false ? undefined : confirmPassword,
+      });
       await authClient.signOut();
       router.push("/");
     } catch (err) {
@@ -444,7 +465,8 @@ export function ProfileSection() {
               className="shrink-0"
               onClick={() => {
                 setDeleteOpen(true);
-                setConfirmEmail("");
+                setConfirmPassword("");
+                setConfirmChecked(false);
                 setDeleteError(null);
               }}
             >
@@ -467,29 +489,46 @@ export function ProfileSection() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <form onSubmit={handleDelete} noValidate>
-            <Field className="pb-4">
-              <FieldLabel htmlFor="confirm-delete-email">
-                Type{" "}
-                <span className="text-foreground font-medium">
-                  {user?.email}
-                </span>{" "}
-                to confirm
-              </FieldLabel>
-              <Input
-                id="confirm-delete-email"
-                value={confirmEmail}
-                onChange={(e) => {
-                  setConfirmEmail(e.target.value);
-                  setDeleteError(null);
-                }}
-                placeholder={user?.email}
-                autoComplete="off"
-                autoCapitalize="none"
-                spellCheck={false}
-                aria-invalid={Boolean(deleteError)}
-              />
-              {deleteError && <FieldError>{deleteError}</FieldError>}
-            </Field>
+            {hasPassword === false ? (
+              <div className="flex flex-col gap-2 pb-4">
+                <label className="flex items-start gap-2.5 text-sm">
+                  <Checkbox
+                    checked={confirmChecked}
+                    onCheckedChange={(checked) => {
+                      setConfirmChecked(checked === true);
+                      setDeleteError(null);
+                    }}
+                    aria-label="I understand this action is permanent"
+                    className="mt-0.5"
+                  />
+                  <span className="text-muted-foreground">
+                    I understand this permanently deletes my account, all active
+                    sessions, and any content I&apos;ve created. This cannot be
+                    undone.
+                  </span>
+                </label>
+                {deleteError && <FieldError>{deleteError}</FieldError>}
+              </div>
+            ) : (
+              <Field className="pb-4">
+                <FieldLabel htmlFor="confirm-delete-password">
+                  Enter your password to confirm
+                </FieldLabel>
+                <Input
+                  id="confirm-delete-password"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => {
+                    setConfirmPassword(e.target.value);
+                    setDeleteError(null);
+                  }}
+                  placeholder="Your password"
+                  autoComplete="current-password"
+                  aria-invalid={Boolean(deleteError)}
+                />
+                {deleteError && <FieldError>{deleteError}</FieldError>}
+              </Field>
+            )}
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
               <Button
@@ -497,8 +536,7 @@ export function ProfileSection() {
                 variant="destructive"
                 disabled={
                   deletingAccount ||
-                  confirmEmail.trim().toLowerCase() !==
-                    user?.email.toLowerCase()
+                  (hasPassword !== false ? !confirmPassword : !confirmChecked)
                 }
               >
                 {deletingAccount ? "Deleting…" : "Delete my account"}

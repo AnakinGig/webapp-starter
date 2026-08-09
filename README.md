@@ -28,7 +28,7 @@ Built with **Next.js 15** (App Router) · **Convex** (reactive backend + databas
 
 **Settings (`/settings`, all signed-in users)**
 - GitHub-style sidebar: **Profile** (photo upload with crop/zoom editor + drag & drop, name, role, member-since) · **Account** (connected OAuth providers - link/disconnect with confirm dialog) · **Appearance** (light / dark / system) · **Security** (password + sessions)
-- **Danger zone** - self-service account deletion with a type-your-email confirmation dialog; last-admin guard, cascades sessions/accounts
+- **Danger zone** - self-service account deletion confirmed by re-entering your **password** (OAuth-only accounts confirm with a checkbox instead); verified server-side against the stored hash with failed-attempt throttling (5 strikes, 60s lockout); last-admin guard, cascades sessions/accounts
 
 **Foundations**
 - **Convex** functions for all data access - reactive `useQuery`/`useMutation` hooks (no REST/tRPC boilerplate, optimistic updates and realtime for free)
@@ -240,7 +240,7 @@ Everything brand-related lives in **one file: `src/lib/app.ts`**. Edit it and th
 - [x] **Profile pictures** - Settings → Profile photo upload via Convex file storage: PNG/JPG/WEBP/GIF input only (no SVG - XSS), 5 MB max, server-side content-type + size validation against the `_storage` system table, replaced/removed files deleted from storage (OAuth avatars left untouched). Pick or drag & drop a photo, then crop it in an editor built on **react-easy-crop** (drag to pan, scroll/slider/pinch to zoom, 90° rotation, live preview) - the visible frame is exported as **WebP** (512×512, ~10-30% of the PNG size; browsers without WebP encoding get a PNG fallback) for the smallest possible images served to visitors
 - [ ] **Audit log** of admin actions (who changed what)
 - [x] **Delete-account self-service** in Settings → Profile → Danger zone
-- [ ] **Password re-confirmation** for account deletion (stronger than typing your email, e.g. for stolen-session protection)
+- [x] **Password re-confirmation** for account deletion - the danger zone now asks for your **password** instead of typing your email (OAuth-only accounts use a confirm checkbox); verified server-side against the stored hash with failed-attempt throttling (5 strikes, 60s lockout) to protect against stolen-session brute force
 - [ ] **Tests** (no test framework installed yet - vitest + React Testing Library is a good fit)
 
 ### Nice-to-haves

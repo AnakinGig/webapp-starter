@@ -1,4 +1,5 @@
 import { ConvexError, v } from "convex/values";
+import { verifyPassword } from "better-auth/crypto";
 
 import { authComponent } from "./auth";
 import { components } from "./_generated/api";
@@ -35,6 +36,18 @@ type UserDoc = {
 };
 
 const PAGE_SIZE = 10;
+
+/**
+ * Dev-grade in-memory throttle for failed delete-account password attempts
+ * (5 strikes, then a 60s lockout). better-auth's own verify-password route
+ * is rate-limited; this direct verification path needs its own guard.
+ * Single-instance only - swap for a distributed limiter (e.g.
+ * convex-helpers rateLimiter) when the app scales beyond one process.
+ */
+const passwordAttempts = new Map<
+  string,
+  { count: number; lockedUntil: number }
+>();
 
 /** Client-facing user shape (same as the old DashboardUser type). */
 function toClientUser(doc: UserDoc) {
@@ -339,12 +352,65 @@ export const remove = mutation({
 
 /**
  * Self-service account deletion (Settings danger zone). The id always comes
- * from the session - never from client input.
+ * from the session - never from client input. Users with an email/password
+ * account must confirm their password: the session alone is not enough for
+ * an irreversible action, so the hash is verified server-side (never trust
+ * a client-side check for this).
  */
 export const deleteAccount = mutation({
-  handler: async (ctx) => {
+  args: {
+    password: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
     const user = await getAuthUser(ctx);
     if (!user) throw new ConvexError("Unauthenticated.");
+
+    // If this user has a credential (email/password) account, require the
+    // password to confirm. OAuth-only accounts have no password to verify.
+    // Look the account up by userId (single-condition filter, same as
+    // exportData/deleteUserRows) and check providerId in code, so a filter
+    // quirk can never silently skip the verification.
+    const accountRows = (await ctx.runQuery(
+      components.betterAuth.adapter.findMany,
+      {
+        model: "account",
+        where: [{ field: "userId", value: user._id }],
+        paginationOpts: { numItems: 200, cursor: null },
+      },
+    )) as PageResult;
+    const credentialAccount = (
+      accountRows.page as Array<{
+        providerId?: string;
+        password?: string | null;
+      }>
+    ).find((a) => a.providerId === "credential");
+
+    if (credentialAccount?.password) {
+      if (!args.password) {
+        throw new ConvexError("Enter your password to confirm.");
+      }
+
+      const bucket = passwordAttempts.get(user._id);
+      if (bucket && bucket.lockedUntil > Date.now()) {
+        throw new ConvexError("Too many attempts. Try again in a minute.");
+      }
+
+      const valid = await verifyPassword({
+        hash: credentialAccount.password,
+        password: args.password,
+      });
+      if (!valid) {
+        const attempt = bucket ?? { count: 0, lockedUntil: 0 };
+        attempt.count += 1;
+        if (attempt.count >= 5) {
+          attempt.count = 0;
+          attempt.lockedUntil = Date.now() + 60_000;
+        }
+        passwordAttempts.set(user._id, attempt);
+        throw new ConvexError("Incorrect password.");
+      }
+      passwordAttempts.delete(user._id);
+    }
 
     // Guard: the last admin cannot delete their account.
     if (user.role === "admin") {
