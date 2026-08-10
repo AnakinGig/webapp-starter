@@ -7,13 +7,11 @@ import {
   CheckIcon,
   CopyIcon,
   KeyRoundIcon,
-  ShieldCheckIcon,
   SmartphoneIcon,
   TriangleAlertIcon,
 } from "lucide-react";
 
 import { authClient } from "@/lib/auth-client";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -40,6 +38,7 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
 
 const CREDENTIAL_PROVIDER = "credential";
 
@@ -130,7 +129,7 @@ export function TwoFactorSection() {
     });
     setEnabling(false);
     if (error) {
-      setPasswordError(error.message ?? "Couldn't start two-factor setup.");
+      setPasswordError(error.message ?? "Couldn't start the setup.");
       return;
     }
     if (!data?.totpURI) {
@@ -160,7 +159,7 @@ export function TwoFactorSection() {
       setCodeError(error.message ?? "That code wasn't accepted. Try again.");
       return;
     }
-    toast.success("Two-factor authentication enabled.");
+    toast.success("Two-factor authentication turned on.");
     setEnableOpen(false);
     resetEnable();
     void refetchSession();
@@ -182,7 +181,7 @@ export function TwoFactorSection() {
       setDisableError(error.message ?? "Couldn't disable two-factor.");
       return;
     }
-    toast.success("Two-factor authentication disabled.");
+    toast.success("Two-factor authentication turned off.");
     setDisableOpen(false);
     setDisablePassword("");
     setDisableError(null);
@@ -229,67 +228,53 @@ export function TwoFactorSection() {
           <div className="border-border flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <p className="truncate text-sm font-medium">
-                  Authenticator app (TOTP)
+                <p
+                  id="two-factor-label"
+                  className="truncate text-sm font-medium"
+                >
+                  Authenticator app
                 </p>
-                {isEnabled ? (
-                  <Badge>
-                    <ShieldCheckIcon data-icon="inline-start" />
-                    Enabled
-                  </Badge>
-                ) : (
-                  <Badge variant="secondary">Off</Badge>
-                )}
               </div>
               <p className="text-muted-foreground mt-1 text-sm">
                 {isEnabled
                   ? "Your account is protected by a one-time code."
-                  : "You'll scan a QR code with an authenticator app to get started."}
+                  : "You'll scan a code with your phone to get started."}
               </p>
             </div>
             {hasPassword === null ? (
               <Skeleton className="h-9 w-32 shrink-0" />
-            ) : isEnabled ? (
-              <div className="flex shrink-0 items-center gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  disabled={codesOpen}
-                  onClick={() => {
-                    setNewCodes(null);
-                    setCodesError(null);
-                    setCodesOpen(true);
-                  }}
-                >
-                  Regenerate backup codes
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  disabled={disableOpen}
-                  onClick={() => {
-                    setDisablePassword("");
-                    setDisableError(null);
-                    setDisableOpen(true);
-                  }}
-                >
-                  Disable
-                </Button>
-              </div>
             ) : (
-              <Button
-                type="button"
-                size="sm"
-                disabled={enableOpen}
-                onClick={() => {
-                  resetEnable();
-                  setEnableOpen(true);
-                }}
-              >
-                Enable
-              </Button>
+              <div className="flex shrink-0 items-center gap-2">
+                {isEnabled && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={codesOpen}
+                    onClick={() => {
+                      setNewCodes(null);
+                      setCodesError(null);
+                      setCodesOpen(true);
+                    }}
+                  >
+                    Regenerate backup codes
+                  </Button>
+                )}
+                <Switch
+                  checked={isEnabled}
+                  onCheckedChange={(checked) => {
+                    if (checked) {
+                      resetEnable();
+                      setEnableOpen(true);
+                    } else {
+                      setDisablePassword("");
+                      setDisableError(null);
+                      setDisableOpen(true);
+                    }
+                  }}
+                  aria-labelledby="two-factor-label"
+                />
+              </div>
             )}
           </div>
         </CardContent>
@@ -307,14 +292,14 @@ export function TwoFactorSection() {
           <DialogHeader>
             <DialogTitle>
               {enableState?.step === "setup"
-                ? "Scan the QR code"
-                : "Enable two-factor authentication"}
+                ? "Scan the code"
+                : "Turn on two-factor authentication"}
             </DialogTitle>
             <DialogDescription>
               {enableState?.step === "setup"
-                ? "Scan the code with your authenticator app, then enter the code it shows to confirm."
+                ? "Scan the code with your phone's authenticator app, then enter the code it shows to confirm."
                 : hasPassword
-                  ? "Confirm your password to start the setup."
+                  ? "Confirm your password to start."
                   : "Set up a one-time code to protect your account."}
             </DialogDescription>
           </DialogHeader>
@@ -333,7 +318,7 @@ export function TwoFactorSection() {
                     <div className="flex w-full items-center justify-between gap-2">
                       <div className="min-w-0">
                         <p className="text-muted-foreground text-xs">
-                          Can&apos;t scan? Enter this key manually:
+                          Can&apos;t scan? Enter this code manually:
                         </p>
                         <p className="font-mono text-xs break-all">
                           {manualSecret}
@@ -345,7 +330,7 @@ export function TwoFactorSection() {
                         size="icon-sm"
                         className="shrink-0"
                         onClick={() => void copyText(manualSecret)}
-                        aria-label="Copy secret key"
+                        aria-label="Copy setup code"
                       >
                         <CopyIcon className="size-4" />
                       </Button>
@@ -477,7 +462,7 @@ export function TwoFactorSection() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Disable two-factor authentication?</DialogTitle>
+            <DialogTitle>Turn off two-factor authentication?</DialogTitle>
             <DialogDescription>
               Your account will only require your password to sign in. This
               lowers your account&apos;s security.
