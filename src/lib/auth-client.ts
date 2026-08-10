@@ -21,6 +21,18 @@ const roleClientPlugin = () =>
               defaultValue: "user",
               input: false,
             },
+            notifyVerificationEmails: {
+              type: "boolean",
+              required: false,
+              defaultValue: true,
+              input: true,
+            },
+            notifyResetEmails: {
+              type: "boolean",
+              required: false,
+              defaultValue: true,
+              input: true,
+            },
           },
         },
       },

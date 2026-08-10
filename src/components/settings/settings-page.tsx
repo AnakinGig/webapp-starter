@@ -3,6 +3,7 @@
 import { useState } from "react";
 import {
   AtSignIcon,
+  BellIcon,
   PaletteIcon,
   ShieldIcon,
   UserRoundIcon,
@@ -15,12 +16,14 @@ import { AccountSection } from "./account-section";
 import { ProfileSection } from "./profile-section";
 import { AppearanceSection } from "./appearance-section";
 import { SecuritySection } from "./security-section";
+import { NotificationsSection } from "./notifications-section";
 
 const SECTIONS = [
   { id: "profile", label: "Profile", icon: UserRoundIcon },
   { id: "account", label: "Account", icon: AtSignIcon },
   { id: "appearance", label: "Appearance", icon: PaletteIcon },
   { id: "security", label: "Security", icon: ShieldIcon },
+  { id: "notifications", label: "Notifications", icon: BellIcon },
 ] as const;
 
 export type SettingsSectionId = (typeof SECTIONS)[number]["id"];
@@ -37,7 +40,8 @@ export function SettingsPage() {
       <div className="mb-8">
         <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
         <p className="text-muted-foreground text-sm leading-relaxed">
-          Manage your profile, connected accounts, appearance and security.
+          Manage your profile, connected accounts, appearance, security and
+          notifications.
         </p>
       </div>
 
@@ -91,6 +95,7 @@ export function SettingsPage() {
           {active === "account" && <AccountSection />}
           {active === "appearance" && <AppearanceSection />}
           {active === "security" && <SecuritySection />}
+          {active === "notifications" && <NotificationsSection />}
         </div>
       </div>
     </div>

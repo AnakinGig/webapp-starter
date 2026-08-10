@@ -38,6 +38,8 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                   image?: null | string;
                   isAnonymous?: null | boolean;
                   name: string;
+                  notifyResetEmails?: null | boolean;
+                  notifyVerificationEmails?: null | boolean;
                   phoneNumber?: null | string;
                   phoneNumberVerified?: null | boolean;
                   role?: null | string;
@@ -182,6 +184,8 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                     | "phoneNumberVerified"
                     | "userId"
                     | "role"
+                    | "notifyVerificationEmails"
+                    | "notifyResetEmails"
                     | "_id";
                   mode?: "sensitive" | "insensitive";
                   operator?:
@@ -553,6 +557,8 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                     | "phoneNumberVerified"
                     | "userId"
                     | "role"
+                    | "notifyVerificationEmails"
+                    | "notifyResetEmails"
                     | "_id";
                   mode?: "sensitive" | "insensitive";
                   operator?:
@@ -998,6 +1004,8 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                   image?: null | string;
                   isAnonymous?: null | boolean;
                   name?: string;
+                  notifyResetEmails?: null | boolean;
+                  notifyVerificationEmails?: null | boolean;
                   phoneNumber?: null | string;
                   phoneNumberVerified?: null | boolean;
                   role?: null | string;
@@ -1023,6 +1031,8 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                     | "phoneNumberVerified"
                     | "userId"
                     | "role"
+                    | "notifyVerificationEmails"
+                    | "notifyResetEmails"
                     | "_id";
                   mode?: "sensitive" | "insensitive";
                   operator?:
@@ -1462,6 +1472,8 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                   image?: null | string;
                   isAnonymous?: null | boolean;
                   name?: string;
+                  notifyResetEmails?: null | boolean;
+                  notifyVerificationEmails?: null | boolean;
                   phoneNumber?: null | string;
                   phoneNumberVerified?: null | boolean;
                   role?: null | string;
@@ -1487,6 +1499,8 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                     | "phoneNumberVerified"
                     | "userId"
                     | "role"
+                    | "notifyVerificationEmails"
+                    | "notifyResetEmails"
                     | "_id";
                   mode?: "sensitive" | "insensitive";
                   operator?:

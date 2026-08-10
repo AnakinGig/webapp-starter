@@ -25,6 +25,9 @@ export const tables = {
     userId: v.optional(v.union(v.null(), v.string())),
     // Custom field: workspace role, assigned server-side only.
     role: v.optional(v.union(v.null(), v.string())),
+    // Notification preferences (mirror user.additionalFields in auth.ts).
+    notifyVerificationEmails: v.optional(v.union(v.null(), v.boolean())),
+    notifyResetEmails: v.optional(v.union(v.null(), v.boolean())),
   })
     .index("email_name", ["email", "name"])
     .index("name", ["name"])

@@ -103,6 +103,19 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) => {
           defaultValue: "user",
           input: false,
         },
+        // Notification preferences - let the client toggle them.
+        notifyVerificationEmails: {
+          type: "boolean",
+          required: false,
+          defaultValue: true,
+          input: true,
+        },
+        notifyResetEmails: {
+          type: "boolean",
+          required: false,
+          defaultValue: true,
+          input: true,
+        },
       },
       // Change email with verification. Only the NEW address gets a
       // verification link (sent via the existing `sendVerificationEmail`
@@ -238,6 +251,15 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) => {
       // Emails go through the same helper as verification (Resend; dev
       // console-log fallback).
       sendResetPassword: async ({ user, url }) => {
+        // `user` is the base type; the notification prefs live on the extended
+        // user doc via additionalFields, so read them through a narrow cast.
+        const prefs = user as { notifyResetEmails?: boolean | null };
+        if (prefs.notifyResetEmails === false) {
+          console.log(
+            "[better-auth] Password reset email skipped (user opted out).",
+          );
+          return;
+        }
         await sendActionEmail({
           to: user.email,
           subject: "Reset your password",
@@ -257,6 +279,15 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) => {
       // verification before signing in, uncomment the next line:
       // requireEmailVerification: true,
       sendVerificationEmail: async ({ user, url }) => {
+        const prefs = user as {
+          notifyVerificationEmails?: boolean | null;
+        };
+        if (prefs.notifyVerificationEmails === false) {
+          console.log(
+            "[better-auth] Verification email skipped (user opted out).",
+          );
+          return;
+        }
         await sendActionEmail({
           to: user.email,
           subject: "Confirm your email",
