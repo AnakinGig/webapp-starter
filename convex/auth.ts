@@ -4,7 +4,9 @@ import { convex } from "@convex-dev/better-auth/plugins";
 import type { BetterAuthOptions } from "better-auth";
 import { APIError, betterAuth } from "better-auth";
 import { getSessionFromCtx } from "better-auth/api";
+import { twoFactor } from "better-auth/plugins";
 
+import { appSettings } from "../src/lib/app";
 import { components, internal } from "./_generated/api";
 import type { DataModel } from "./_generated/dataModel";
 import authConfig from "./auth.config";
@@ -157,6 +159,69 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) => {
           }
         }
       },
+      // Security notification: email the owner when 2FA is turned on or off.
+      // The after hook runs for both outcomes, so it only sends when the
+      // endpoint actually succeeded - `context.returned` is the endpoint's
+      // JSON response on success and an APIError on failure. The session was
+      // resolved by the endpoint's own session middleware, so
+      // `context.session.user` is available.
+      //
+      // 2FA only becomes ACTIVE when the setup code is verified, so the
+      // "enabled" email fires on /two-factor/verify-totp success - and only
+      // when the caller already had a session (setup flow). During the sign-in
+      // challenge the caller has no session yet, so no email is sent there.
+      // The "disabled" email fires on /two-factor/disable success.
+      //
+      // IMPORTANT: unlike `runBeforeHooks` (which uses `result?.headers`),
+      // `runAfterHooks` reads `result.headers` directly - the handler MUST
+      // return a response object even when it does nothing, or every auth
+      // request crashes with "Cannot read properties of undefined".
+      after: async (ctx) => {
+        const noop = { response: undefined, headers: undefined } as const;
+        const runtime = ctx as unknown as {
+          path?: string;
+          context?: {
+            returned?: unknown;
+            session?: { user?: { email?: string } } | null;
+          };
+        };
+        const path = runtime.path;
+        if (
+          path !== "/two-factor/verify-totp" &&
+          path !== "/two-factor/disable"
+        ) {
+          return noop;
+        }
+        const returned = runtime.context?.returned as
+          { status?: boolean } | undefined;
+        if (!returned || returned instanceof Error) return noop;
+        if (path === "/two-factor/disable" && returned.status !== true) {
+          return noop;
+        }
+        const email = runtime.context?.session?.user?.email;
+        if (!email) return noop;
+        // verify-totp without a session is the sign-in challenge (no email);
+        // with a session it is the setup activation (email).
+        if (path === "/two-factor/verify-totp" && !runtime.context?.session) {
+          return noop;
+        }
+        const enabled = path === "/two-factor/verify-totp";
+        await sendActionEmail({
+          to: email,
+          subject: enabled
+            ? "Two-factor authentication enabled"
+            : "Two-factor authentication disabled",
+          heading: enabled
+            ? "Two-factor authentication enabled"
+            : "Two-factor authentication disabled",
+          body: enabled
+            ? "Two-factor authentication (TOTP) was just turned on for your account. If this wasn't you, sign in and disable it immediately, then change your password."
+            : "Two-factor authentication was just turned off for your account. If this wasn't you, sign in and re-enable it immediately, then change your password.",
+          ctaLabel: "Review security",
+          ctaUrl: `${siteUrl}/settings`,
+        });
+        return noop;
+      },
     },
 
     emailAndPassword: {
@@ -221,10 +286,44 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) => {
         "/change-email": { window: 60, max: 1 },
         "/link-social": { window: 60, max: 10 },
         "/unlink-account": { window: 60, max: 10 },
+        // 2FA: override the plugin's tight default (3 req / 10s) with per-path
+        // windows. Attempt caps still apply per challenge (5 tries), and the
+        // global 100 req / 60s ceiling keeps the total in check.
+        "/two-factor/enable": { window: 60, max: 5 },
+        "/two-factor/disable": { window: 60, max: 5 },
+        "/two-factor/verify-totp": { window: 60, max: 5 },
+        "/two-factor/verify-backup-code": { window: 60, max: 5 },
+        "/two-factor/generate-backup-codes": { window: 60, max: 5 },
       },
     },
 
-    plugins: [convex({ authConfig })],
+    // Two-factor authentication (TOTP + backup codes).
+    //
+    // The account-level lockout (`accountLockout`) is disabled on purpose:
+    // it writes `failedVerificationCount` / `lockedUntil` onto the twoFactor
+    // row via `adapter.incrementOne`, and the Convex component's twoFactor
+    // table has neither column nor an `incrementOne` adapter method, so the
+    // write would fail validation. The per-challenge attempt cap (5 tries,
+    // then the user must restart sign-in) and the plugin's built-in
+    // /two-factor/* rate limit (3 req / 10s / IP) still apply.
+    //
+    // `allowPasswordless` lets OAuth-only accounts (no credential password)
+    // set up 2FA without a password; the server still requires the password
+    // whenever a credential account exists. The client mirrors this by only
+    // asking for the password when `listAccounts` shows a credential row.
+    //
+    // OAuth sign-ins skip the challenge: the plugin's intercept only matches
+    // the email/username/phone sign-in routes, not /sign-in/social. Documented
+    // in README as a known limitation.
+    plugins: [
+      twoFactor({
+        issuer: appSettings.name,
+        accountLockout: { enabled: false },
+        allowPasswordless: true,
+        backupCodeOptions: { amount: 10, length: 10 },
+      }),
+      convex({ authConfig }),
+    ],
   } satisfies BetterAuthOptions;
 };
 

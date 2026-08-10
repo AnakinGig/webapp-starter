@@ -75,11 +75,18 @@ export const tables = {
     .index("expiresAt", ["expiresAt"])
     .index("identifier", ["identifier"]),
 
+  // `failedVerificationCount` / `lockedUntil` exist so the twoFactor plugin's
+  // account-lockout writes validate against this table. The app keeps
+  // `accountLockout.enabled = false` (the Convex adapter has no atomic
+  // increment), but the plugin still writes `failedVerificationCount: 0` when
+  // a row is created - without the field, enabling 2FA fails validation.
   twoFactor: defineTable({
     secret: v.string(),
     backupCodes: v.string(),
     userId: v.string(),
     verified: v.optional(v.union(v.null(), v.boolean())),
+    failedVerificationCount: v.optional(v.union(v.null(), v.number())),
+    lockedUntil: v.optional(v.union(v.null(), v.number())),
   }).index("userId", ["userId"]),
 
   oauthApplication: defineTable({

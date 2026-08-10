@@ -1,4 +1,5 @@
 import { convexClient } from "@convex-dev/better-auth/client/plugins";
+import { twoFactorClient } from "better-auth/client/plugins";
 import { createAuthClient } from "better-auth/react";
 
 /**
@@ -27,7 +28,10 @@ const roleClientPlugin = () =>
   }) as const;
 
 export const authClient = createAuthClient({
-  plugins: [convexClient(), roleClientPlugin()],
+  // twoFactorClient mirrors the server-side `twoFactor` plugin: it exposes
+  // `authClient.twoFactor.*` (enable / verifyTotp / disable /
+  // generateBackupCodes / verifyBackupCode) and types `session.user.twoFactorEnabled`.
+  plugins: [convexClient(), roleClientPlugin(), twoFactorClient()],
 });
 
 export type Session = typeof authClient.$Infer.Session;

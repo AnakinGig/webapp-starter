@@ -3,13 +3,19 @@
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { MailWarningIcon, TriangleAlertIcon } from "lucide-react";
+import {
+  MailWarningIcon,
+  ShieldCheckIcon,
+  TriangleAlertIcon,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { OAuthButtons } from "@/components/oauth-buttons";
 import {
   Field,
+  FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
@@ -31,6 +37,20 @@ export function LoginForm() {
   const [formError, setFormError] = useState<string | null>(null);
   const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null);
 
+  // Two-factor challenge state. After a successful email/password sign-in the
+  // plugin replies with `twoFactorRedirect: true` instead of a session; the
+  // user then proves the TOTP code (or a backup code) before the session is
+  // created.
+  const [twoFactor, setTwoFactor] = useState<{
+    email: string;
+    methods: string[];
+  } | null>(null);
+  const [useBackupCode, setUseBackupCode] = useState(false);
+  const [code, setCode] = useState("");
+  const [trustDevice, setTrustDevice] = useState(false);
+  const [codeError, setCodeError] = useState<string | null>(null);
+  const [verifying, setVerifying] = useState(false);
+
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     if (email && !isValidEmail(email)) {
@@ -50,6 +70,21 @@ export function LoginForm() {
       setFormError(error.message ?? "Invalid email or password.");
       return;
     }
+    // 2FA enabled: the plugin returns `twoFactorRedirect` and no session. The
+    // client's inferred type doesn't include the plugin's response fields
+    // (twoFactorClient's $InferServerPlugin only augments the user schema), so
+    // read them via a minimal cast.
+    const signInData = data as typeof data & {
+      twoFactorRedirect?: boolean;
+      twoFactorMethods?: string[];
+    };
+    if (signInData.twoFactorRedirect) {
+      setTwoFactor({
+        email: signInData.user?.email ?? email,
+        methods: signInData.twoFactorMethods ?? ["totp"],
+      });
+      return;
+    }
     // You're signed in, but an unverified address is worth flagging before
     // we bounce you to the dashboard.
     if (data?.user?.emailVerified === false) {
@@ -58,6 +93,116 @@ export function LoginForm() {
     }
     router.push("/dashboard");
     router.refresh();
+  }
+
+  async function submitTwoFactor(e: FormEvent) {
+    e.preventDefault();
+    const trimmed = code.replace(/\s/g, "");
+    if (!trimmed) {
+      setCodeError("Enter your authentication code.");
+      return;
+    }
+    if (!useBackupCode && !/^\d{6}$/.test(trimmed)) {
+      setCodeError("Enter the 6-digit code from your authenticator app.");
+      return;
+    }
+    setCodeError(null);
+    setVerifying(true);
+    // TOTP and backup codes complete the same challenge; the plugin sets the
+    // session cookie on success.
+    const result = useBackupCode
+      ? await authClient.twoFactor.verifyBackupCode({ code: trimmed })
+      : await authClient.twoFactor.verifyTotp({
+          code: trimmed,
+          trustDevice,
+        });
+    setVerifying(false);
+    if (result.error) {
+      setCodeError(result.error.message ?? "That code wasn't accepted.");
+      return;
+    }
+    router.push("/dashboard");
+    router.refresh();
+  }
+
+  if (twoFactor) {
+    return (
+      <form onSubmit={submitTwoFactor} noValidate>
+        <FieldGroup>
+          <Alert>
+            <ShieldCheckIcon />
+            <AlertDescription className="leading-relaxed">
+              Two-factor authentication is enabled on{" "}
+              <strong>{twoFactor.email}</strong>. Enter the code from your
+              authenticator app to finish signing in.
+            </AlertDescription>
+          </Alert>
+          <Field>
+            <FieldLabel htmlFor="2fa-code">
+              {useBackupCode ? "Backup code" : "Authentication code"}
+            </FieldLabel>
+            <Input
+              id="2fa-code"
+              inputMode={useBackupCode ? "text" : "numeric"}
+              autoComplete={useBackupCode ? "one-time-code" : "one-time-code"}
+              placeholder={useBackupCode ? "xxxxx-xxxxx" : "123456"}
+              autoFocus
+              value={code}
+              onChange={(e) => {
+                setCode(e.target.value);
+                setCodeError(null);
+              }}
+              aria-invalid={Boolean(codeError)}
+              required
+            />
+            {codeError ? (
+              <FieldError>{codeError}</FieldError>
+            ) : useBackupCode ? (
+              <FieldDescription>
+                Use a backup code only if you can&apos;t access your
+                authenticator app. Each code works once.
+              </FieldDescription>
+            ) : (
+              <FieldDescription>
+                The code refreshes every 30 seconds.
+              </FieldDescription>
+            )}
+          </Field>
+          {!useBackupCode && (
+            <Field>
+              <label className="flex items-start gap-2.5 text-sm">
+                <Checkbox
+                  checked={trustDevice}
+                  onCheckedChange={(checked) =>
+                    setTrustDevice(checked === true)
+                  }
+                />
+                <span className="text-muted-foreground">
+                  Trust this device for 30 days - you won&apos;t be asked for a
+                  code on it again.
+                </span>
+              </label>
+            </Field>
+          )}
+          <Button type="submit" className="w-full" disabled={verifying}>
+            {verifying ? "Verifying..." : "Verify"}
+          </Button>
+          <button
+            type="button"
+            className="text-muted-foreground hover:text-foreground mx-auto text-xs underline-offset-4 hover:underline"
+            onClick={() => {
+              setUseBackupCode((v) => !v);
+              setCode("");
+              setCodeError(null);
+            }}
+          >
+            {useBackupCode
+              ? "Use an authenticator code instead"
+              : "Use a backup code instead"}
+          </button>
+        </FieldGroup>
+      </form>
+    );
   }
 
   if (unverifiedEmail) {

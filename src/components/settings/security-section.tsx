@@ -42,6 +42,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { PasswordStrengthMeter } from "@/components/password-strength";
+import { TwoFactorSection } from "@/components/settings/two-factor-section";
 import { formatDate } from "@/lib/format";
 import { sendVerificationEmail } from "@/lib/send-verification";
 import { PASSWORD_MIN_LENGTH, passwordMeetsPolicy } from "@/lib/validation";
@@ -495,6 +496,8 @@ export function SecuritySection() {
           </CardFooter>
         </form>
       </Card>
+
+      <TwoFactorSection />
 
       <Card>
         <CardHeader>
