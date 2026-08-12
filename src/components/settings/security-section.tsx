@@ -13,7 +13,6 @@ import {
   KeyRoundIcon,
   LaptopIcon,
   SmartphoneIcon,
-  TriangleAlertIcon,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -39,11 +38,13 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import {
-  Alert,
-  AlertAction,
-  AlertDescription,
-  AlertTitle,
-} from "@/components/ui/alert";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Tooltip,
   TooltipContent,
@@ -156,9 +157,18 @@ export function SecuritySection() {
   const [revoking, setRevoking] = useState<string | null>(null);
   const [revokingOthers, setRevokingOthers] = useState(false);
   // The session is older than the 24h freshness window, so sensitive actions
-  // are locked until the user signs in again.
+  // (listing sessions, changing password/email) are locked until the user
+  // re-authenticates in place - GitHub-style "Confirm access".
   const [needsReAuth, setNeedsReAuth] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [accessPassword, setAccessPassword] = useState("");
+  const [confirmError, setConfirmError] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState(false);
+  const [confirmVerified, setConfirmVerified] = useState(false);
   const [reAuthenticating, setReAuthenticating] = useState(false);
+  // The in-flight blur verification, so submit waits for it instead of firing
+  // a second parallel request.
+  const confirmBlurRef = useRef<Promise<void> | null>(null);
 
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -187,6 +197,7 @@ export function SecuritySection() {
         /not fresh/i.test(error.message ?? "")
       ) {
         setNeedsReAuth(true);
+        setConfirmOpen(true);
         return;
       }
       toast.error(error.message ?? "Failed to load sessions.");
@@ -312,6 +323,89 @@ export function SecuritySection() {
     toast.success("Signed out of all other sessions.");
   }
 
+  /** Verify the password as soon as the user leaves the field (fast UX). */
+  async function handleConfirmBlur() {
+    const value = accessPassword;
+    if (!value || confirming || confirmError) return;
+    const check = (async () => {
+      setConfirming(true);
+      try {
+        const res = await fetch("/api/auth/verify-password", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ password: value }),
+        });
+        const body = (await res.json().catch(() => ({}))) as {
+          valid?: boolean;
+          data?: { valid?: boolean };
+        };
+        setConfirmVerified(
+          res.ok && (body.valid === true || body.data?.valid === true),
+        );
+        if (!res.ok) {
+          setConfirmError("That password isn't correct.");
+        }
+      } catch {
+        // Network/session hiccup - leave the field unverified, the submit flow
+        // re-checks against the backend anyway.
+      } finally {
+        setConfirming(false);
+      }
+    })();
+    confirmBlurRef.current = check;
+    await check;
+    if (confirmBlurRef.current === check) confirmBlurRef.current = null;
+  }
+
+  /** Re-authenticate in place (GitHub "Confirm access"): verifies the
+   *  password and resets the session's freshness window server-side, so the
+   *  Sessions card (and other sensitive actions) work again without the user
+   *  having to sign out. */
+  async function handleConfirmAccess(e: FormEvent) {
+    e.preventDefault();
+    // Let any in-flight blur verification finish first (it also sets the
+    // spinner), so the submit is the only request that verifies against the
+    // backend while confirming.
+    if (confirmBlurRef.current) {
+      await confirmBlurRef.current;
+    }
+    if (confirming) return;
+    if (!accessPassword) {
+      setConfirmError("Enter your password to continue.");
+      return;
+    }
+    setConfirming(true);
+    setConfirmError(null);
+    try {
+      const res = await fetch("/api/auth/confirm-access", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: accessPassword }),
+      });
+      const body = (await res.json().catch(() => ({}))) as {
+        status?: boolean;
+        message?: string;
+      };
+      if (!res.ok || body.status !== true) {
+        setConfirmError(
+          body.message ?? "Couldn't confirm your access. Try again.",
+        );
+        return;
+      }
+      // Fresh window granted - reload the sessions in place.
+      setConfirmOpen(false);
+      setAccessPassword("");
+      setConfirmVerified(false);
+      setNeedsReAuth(false);
+      await loadSessions();
+    } catch {
+      setConfirmError("Couldn't reach the server. Try again.");
+    } finally {
+      setConfirming(false);
+    }
+  }
+
+  /** Fallback if the user can't confirm (forgot password / no password set). */
   async function handleReAuth() {
     setReAuthenticating(true);
     try {
@@ -547,26 +641,21 @@ export function SecuritySection() {
         </CardHeader>
         <CardContent className="p-0">
           {needsReAuth ? (
-            <Alert className="m-4 w-[calc(100%-2rem)]">
-              <TriangleAlertIcon aria-hidden="true" />
-              <AlertTitle>Sign in again to continue</AlertTitle>
-              <AlertDescription>
+            <div className="flex flex-col gap-3 px-4 py-6 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-muted-foreground max-w-md text-sm">
                 For security, sensitive actions require a session that is less
-                than 24 hours old. Sign in again to view and manage your
+                than 24 hours old. Confirm your password to view and manage your
                 sessions.
-              </AlertDescription>
-              <AlertAction>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  disabled={reAuthenticating}
-                  onClick={() => void handleReAuth()}
-                >
-                  {reAuthenticating ? "Signing out…" : "Sign in again"}
-                </Button>
-              </AlertAction>
-            </Alert>
+              </p>
+              <Button
+                type="button"
+                size="sm"
+                className="shrink-0"
+                onClick={() => setConfirmOpen(true)}
+              >
+                Confirm access
+              </Button>
+            </div>
           ) : loadingSessions ? (
             <div className="flex flex-col gap-3 px-4 py-4">
               {Array.from({ length: 2 }).map((_, i) => (
@@ -649,6 +738,86 @@ export function SecuritySection() {
           </CardFooter>
         )}
       </Card>
+
+      <Dialog
+        open={confirmOpen}
+        onOpenChange={(open) => {
+          setConfirmOpen(open);
+          if (!open) {
+            setAccessPassword("");
+            setConfirmError(null);
+            setConfirmVerified(false);
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm access</DialogTitle>
+            <DialogDescription>
+              For security, enter your password to continue. You won&apos;t be
+              signed out - this unlocks sensitive actions for another 24 hours.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleConfirmAccess} noValidate>
+            <Field>
+              <FieldLabel htmlFor="confirm-access-password">
+                Password
+              </FieldLabel>
+              <Input
+                id="confirm-access-password"
+                type="password"
+                value={accessPassword}
+                onChange={(e) => {
+                  setAccessPassword(e.target.value);
+                  setConfirmError(null);
+                  setConfirmVerified(false);
+                }}
+                onBlur={() => void handleConfirmBlur()}
+                autoComplete="current-password"
+                autoFocus
+                aria-invalid={Boolean(confirmError)}
+                required
+              />
+              {confirming && !confirmError ? (
+                <p className="text-muted-foreground flex items-center gap-1.5 text-xs">
+                  <Spinner className="size-3" aria-hidden="true" />
+                  Checking…
+                </p>
+              ) : confirmVerified && !confirmError ? (
+                <p className="text-muted-foreground flex items-center gap-1.5 text-xs">
+                  <CheckIcon className="size-3" />
+                  Password verified
+                </p>
+              ) : confirmError ? (
+                <FieldError>{confirmError}</FieldError>
+              ) : null}
+            </Field>
+            <DialogFooter className="mt-4">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={confirming}
+                onClick={() => setConfirmOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={confirming}>
+                {confirming ? "Confirming…" : "Confirm"}
+              </Button>
+            </DialogFooter>
+          </form>
+          <button
+            type="button"
+            className="text-muted-foreground hover:text-foreground -mt-2 text-center text-xs underline underline-offset-3"
+            disabled={reAuthenticating}
+            onClick={() => void handleReAuth()}
+          >
+            {reAuthenticating
+              ? "Signing out…"
+              : "Can't confirm? Sign out and sign in again"}
+          </button>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -1,10 +1,15 @@
 import { createClient, type AuthFunctions } from "@convex-dev/better-auth";
 import type { GenericCtx } from "@convex-dev/better-auth/utils";
 import { convex } from "@convex-dev/better-auth/plugins";
-import type { BetterAuthOptions } from "better-auth";
+import type { BetterAuthOptions, BetterAuthPlugin } from "better-auth";
 import { APIError, betterAuth } from "better-auth";
-import { getSessionFromCtx } from "better-auth/api";
+import {
+  createAuthEndpoint,
+  getSessionFromCtx,
+  sensitiveSessionMiddleware,
+} from "better-auth/api";
 import { twoFactor } from "better-auth/plugins";
+import * as z from "zod";
 
 import { appSettings } from "../src/lib/app";
 import { components, internal } from "./_generated/api";
@@ -59,6 +64,93 @@ export const authComponent = createClient<DataModel, typeof authSchema>(
     },
   },
 );
+
+// Re-auth (GitHub-style "Confirm access" / Google "Verify it's you"):
+//
+// better-auth gates sensitive endpoints (list-sessions, password/email
+// change) behind a 24h session-freshness check (freshAge). The big sites do
+// NOT sign the user out when that window lapses - they show an in-place
+// password dialog, then grant a fresh window. This plugin mirrors that:
+// POST /confirm-access verifies the current password and, on success, resets
+// the session's createdAt so the freshness check passes again for another
+// freshAge window.
+//
+// Uses sensitiveSessionMiddleware (a valid session is required, but no
+// freshness) so the dialog works precisely when the freshness gate would
+// otherwise block the user. Rate-limited like the other auth endpoints.
+const confirmAccessPlugin = (): BetterAuthPlugin => ({
+  id: "confirm-access",
+  endpoints: {
+    confirmAccess: createAuthEndpoint(
+      "/confirm-access",
+      {
+        method: "POST",
+        body: z.object({
+          password: z.string().min(1),
+        }),
+        use: [sensitiveSessionMiddleware],
+        metadata: {
+          openapi: {
+            operationId: "confirmAccess",
+            description:
+              "Verify the current password and restore session freshness",
+            responses: {
+              "200": {
+                description: "Success",
+                content: {
+                  "application/json": {
+                    schema: {
+                      type: "object",
+                      properties: { status: { type: "boolean" } },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      async (ctx) => {
+        const { password } = ctx.body;
+        const session = ctx.context.session;
+        const userId = session.user.id;
+        if (!userId) {
+          throw APIError.from("UNAUTHORIZED", {
+            code: "UNAUTHORIZED",
+            message: "Sign in to confirm your access.",
+          });
+        }
+        // Same verification as the built-in /verify-password endpoint. An
+        // account without a credential password fails with the SAME generic
+        // error as a wrong password - the response must not reveal whether a
+        // password is even set (defense in depth; the built-in verify-password
+        // behaves this way too).
+        const credentialAccount = (
+          await ctx.context.internalAdapter.findAccounts(userId)
+        )?.find((a) => a.providerId === "credential" && a.password);
+        const accountPassword = credentialAccount?.password;
+        const valid =
+          !!accountPassword &&
+          (await ctx.context.password.verify({
+            hash: accountPassword,
+            password,
+          }));
+        if (!valid) {
+          throw APIError.from("BAD_REQUEST", {
+            code: "INVALID_PASSWORD",
+            message: "Incorrect password.",
+          });
+        }
+        // Grant a fresh window: reset the session's creation time so the
+        // 24h freshness check (freshAge) passes again.
+        await ctx.context.internalAdapter.updateSession(session.session.token, {
+          createdAt: new Date(),
+        });
+        return ctx.json({ status: true });
+      },
+    ),
+  },
+});
 
 /**
  * Better Auth options. The instance runs on the Convex deployment, so
@@ -325,6 +417,8 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) => {
         "/two-factor/verify-totp": { window: 60, max: 5 },
         "/two-factor/verify-backup-code": { window: 60, max: 5 },
         "/two-factor/generate-backup-codes": { window: 60, max: 5 },
+        // Re-auth: brute-force a password-confirm dialog - tight limit.
+        "/confirm-access": { window: 60, max: 5 },
       },
     },
 
@@ -354,6 +448,7 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) => {
         backupCodeOptions: { amount: 10, length: 10 },
       }),
       convex({ authConfig }),
+      confirmAccessPlugin(),
     ],
   } satisfies BetterAuthOptions;
 };
