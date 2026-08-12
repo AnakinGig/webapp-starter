@@ -13,7 +13,9 @@ import {
   KeyRoundIcon,
   LaptopIcon,
   SmartphoneIcon,
+  TriangleAlertIcon,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 import { authClient } from "@/lib/auth-client";
 import { Badge } from "@/components/ui/badge";
@@ -36,6 +38,12 @@ import {
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
+import {
+  Alert,
+  AlertAction,
+  AlertDescription,
+  AlertTitle,
+} from "@/components/ui/alert";
 import {
   Tooltip,
   TooltipContent,
@@ -103,6 +111,7 @@ function showIp(ip?: string | null) {
 }
 
 export function SecuritySection() {
+  const router = useRouter();
   const { data: session, refetch: refetchSession } = authClient.useSession();
   const currentToken = session?.session?.token;
 
@@ -146,6 +155,10 @@ export function SecuritySection() {
   const [loadingSessions, setLoadingSessions] = useState(true);
   const [revoking, setRevoking] = useState<string | null>(null);
   const [revokingOthers, setRevokingOthers] = useState(false);
+  // The session is older than the 24h freshness window, so sensitive actions
+  // are locked until the user signs in again.
+  const [needsReAuth, setNeedsReAuth] = useState(false);
+  const [reAuthenticating, setReAuthenticating] = useState(false);
 
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -166,9 +179,20 @@ export function SecuritySection() {
     const { data, error } = await authClient.listSessions();
     setLoadingSessions(false);
     if (error) {
+      // Sensitive endpoints are guarded by better-auth's 24h session freshness
+      // check. Instead of surfacing the raw "Session is not fresh" error, prompt
+      // the user to sign in again - that is the intended recovery path.
+      if (
+        error.code === "SESSION_NOT_FRESH" ||
+        /not fresh/i.test(error.message ?? "")
+      ) {
+        setNeedsReAuth(true);
+        return;
+      }
       toast.error(error.message ?? "Failed to load sessions.");
       return;
     }
+    setNeedsReAuth(false);
     setSessions(data ?? []);
   }, []);
 
@@ -286,6 +310,21 @@ export function SecuritySection() {
     }
     await loadSessions();
     toast.success("Signed out of all other sessions.");
+  }
+
+  async function handleReAuth() {
+    setReAuthenticating(true);
+    try {
+      await authClient.signOut();
+      router.push("/login");
+      router.refresh();
+    } catch {
+      // If sign-out fails, fall back to the login page so the user can still
+      // recover by signing in again.
+      router.push("/login");
+    } finally {
+      setReAuthenticating(false);
+    }
   }
 
   const isVerified = session?.user?.emailVerified === true;
@@ -507,7 +546,28 @@ export function SecuritySection() {
           </CardDescription>
         </CardHeader>
         <CardContent className="p-0">
-          {loadingSessions ? (
+          {needsReAuth ? (
+            <Alert className="m-4 w-[calc(100%-2rem)]">
+              <TriangleAlertIcon aria-hidden="true" />
+              <AlertTitle>Sign in again to continue</AlertTitle>
+              <AlertDescription>
+                For security, sensitive actions require a session that is less
+                than 24 hours old. Sign in again to view and manage your
+                sessions.
+              </AlertDescription>
+              <AlertAction>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={reAuthenticating}
+                  onClick={() => void handleReAuth()}
+                >
+                  {reAuthenticating ? "Signing out…" : "Sign in again"}
+                </Button>
+              </AlertAction>
+            </Alert>
+          ) : loadingSessions ? (
             <div className="flex flex-col gap-3 px-4 py-4">
               {Array.from({ length: 2 }).map((_, i) => (
                 <Skeleton key={i} className="h-12 w-full" />
@@ -561,31 +621,33 @@ export function SecuritySection() {
             </ul>
           )}
         </CardContent>
-        <CardFooter className="border-border justify-between border-t">
-          <p className="text-muted-foreground text-xs">
-            You can sign out of any device signed in to your account.
-          </p>
-          <Tooltip>
-            <TooltipTrigger render={<span className="inline-flex" />}>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={revokingOthers || sessions.length <= 1}
-                onClick={() => void handleRevokeOthers()}
-              >
-                {revokingOthers
-                  ? "Signing out…"
-                  : "Sign out of all other sessions"}
-              </Button>
-            </TooltipTrigger>
-            {!revokingOthers && sessions.length <= 1 && (
-              <TooltipContent>
-                You have no other active sessions.
-              </TooltipContent>
-            )}
-          </Tooltip>
-        </CardFooter>
+        {needsReAuth ? null : (
+          <CardFooter className="border-border justify-between border-t">
+            <p className="text-muted-foreground text-xs">
+              You can sign out of any device signed in to your account.
+            </p>
+            <Tooltip>
+              <TooltipTrigger render={<span className="inline-flex" />}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={revokingOthers || sessions.length <= 1}
+                  onClick={() => void handleRevokeOthers()}
+                >
+                  {revokingOthers
+                    ? "Signing out…"
+                    : "Sign out of all other sessions"}
+                </Button>
+              </TooltipTrigger>
+              {!revokingOthers && sessions.length <= 1 && (
+                <TooltipContent>
+                  You have no other active sessions.
+                </TooltipContent>
+              )}
+            </Tooltip>
+          </CardFooter>
+        )}
       </Card>
     </div>
   );
