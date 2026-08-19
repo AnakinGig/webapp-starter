@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 import { KeyRoundIcon, TriangleAlertIcon } from "lucide-react";
@@ -64,7 +64,7 @@ export function AccountSection() {
     (a) => a.providerId === CREDENTIAL_PROVIDER,
   );
 
-  async function loadAccounts() {
+  const loadAccounts = useCallback(async () => {
     setLoading(true);
     const { data, error: listError } = await authClient.listAccounts();
     setLoading(false);
@@ -75,11 +75,11 @@ export function AccountSection() {
     setAccounts(
       (data ?? []).map((a) => ({ ...a, createdAt: Number(a.createdAt) })),
     );
-  }
+  }, [t]);
 
   useEffect(() => {
     void loadAccounts();
-  }, []);
+  }, [loadAccounts]);
 
   const linkedByProvider = useMemo(() => {
     const map = new Map<string, LinkedAccount>();
