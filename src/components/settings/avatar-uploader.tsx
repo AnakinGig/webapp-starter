@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useMutation } from "convex/react";
+import { useTranslations } from "next-intl";
 import { type GenericId } from "convex/values";
 import { Camera, ImagePlus, LoaderCircle, Trash2 } from "lucide-react";
 
@@ -34,6 +35,7 @@ export function AvatarUploader({
   name,
   onAvatarChanged,
 }: AvatarUploaderProps) {
+  const t = useTranslations("avatar");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cropUrlRef = useRef<string | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -65,14 +67,14 @@ export function AvatarUploader({
 
     // Fast client-side checks (the server re-validates).
     if (!ACCEPTED_TYPES.includes(file.type)) {
-      setError("Only PNG, JPEG, WEBP or GIF images are allowed.");
+      setError(t("invalidType"));
       // The error renders inside the photo dialog - open it if a bad file
       // was dropped straight onto the avatar so the message is visible.
       setPhotoOpen(true);
       return;
     }
     if (file.size > MAX_SIZE) {
-      setError("Image must be 5 MB or smaller.");
+      setError(t("tooLarge"));
       setPhotoOpen(true);
       return;
     }
@@ -115,7 +117,7 @@ export function AvatarUploader({
         body: blob,
       });
       if (!result.ok) {
-        throw new Error("Upload failed. Please try again.");
+        throw new Error(t("uploadFailed"));
       }
       const data = (await result.json()) as { storageId: string };
       const storageId = data.storageId as GenericId<"_storage">;
@@ -138,9 +140,7 @@ export function AvatarUploader({
       await removeAvatar();
       await onAvatarChanged();
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Couldn't remove the image.",
-      );
+      setError(err instanceof Error ? err.message : t("removeFailed"));
     } finally {
       setUploading(false);
     }
@@ -175,7 +175,7 @@ export function AvatarUploader({
       >
         <button
           type="button"
-          aria-label={image ? "Change your photo" : "Add a photo"}
+          aria-label={image ? t("changePhoto") : t("addPhoto")}
           aria-haspopup="dialog"
           className="group focus-visible:ring-ring relative block cursor-pointer rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
           onClick={() => setPhotoOpen(true)}
@@ -216,11 +216,8 @@ export function AvatarUploader({
       <Dialog open={photoOpen} onOpenChange={setPhotoOpen}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle>Change your photo</DialogTitle>
-            <DialogDescription>
-              Upload a new photo or remove the current one. You can crop it
-              before saving.
-            </DialogDescription>
+            <DialogTitle>{t("changePhotoTitle")}</DialogTitle>
+            <DialogDescription>{t("changePhotoDescription")}</DialogDescription>
           </DialogHeader>
 
           <div className="flex flex-col gap-4">
@@ -240,8 +237,8 @@ export function AvatarUploader({
                     type="button"
                     variant="destructive"
                     size="icon-sm"
-                    aria-label="Remove photo"
-                    title="Remove photo"
+                    aria-label={t("removePhoto")}
+                    title={t("removePhoto")}
                     disabled={uploading}
                     onClick={() => void handleRemove()}
                     className="ring-background bg-destructive text-destructive-foreground hover:bg-destructive/90 absolute -top-1.5 -right-1.5 rounded-full ring-2"
@@ -253,7 +250,7 @@ export function AvatarUploader({
               <div className="min-w-0">
                 <p className="truncate text-sm font-medium">{name}</p>
                 <p className="text-muted-foreground text-xs">
-                  JPG, PNG, WEBP or GIF - 5 MB max
+                  {t("formatsHint")}
                 </p>
               </div>
             </div>
@@ -289,7 +286,7 @@ export function AvatarUploader({
               }}
               role="button"
               tabIndex={0}
-              aria-label="Upload a new photo"
+              aria-label={t("uploadNewPhoto")}
             >
               {uploading ? (
                 <LoaderCircle className="size-5 animate-spin" />
@@ -297,10 +294,10 @@ export function AvatarUploader({
                 <ImagePlus className="size-5" />
               )}
               <span className="text-sm font-medium">
-                {uploading ? "Uploading…" : "Upload new photo"}
+                {uploading ? t("uploading") : t("uploadNewPhoto")}
               </span>
               <span className="text-muted-foreground text-xs">
-                or drag &amp; drop it here
+                {t("dragDropHint")}
               </span>
             </div>
 
@@ -317,7 +314,7 @@ export function AvatarUploader({
               variant="outline"
               onClick={() => setPhotoOpen(false)}
             >
-              Close
+              {t("close")}
             </Button>
           </DialogFooter>
         </DialogContent>

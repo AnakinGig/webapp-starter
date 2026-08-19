@@ -1,107 +1,108 @@
-"use client"
+"use client";
 
-import { useState, type FormEvent } from "react"
-import Link from "next/link"
-import {
-  CheckCircleIcon,
-  LinkIcon,
-  TriangleAlertIcon,
-} from "lucide-react"
+import { useState, type FormEvent } from "react";
+import Link from "next/link";
+import { useTranslations } from "next-intl";
+import { CheckCircleIcon, LinkIcon, TriangleAlertIcon } from "lucide-react";
 
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Button } from "@/components/ui/button"
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import {
   Field,
   FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
-} from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
-import { PasswordStrengthMeter } from "@/components/password-strength"
-import {
-  PASSWORD_MIN_LENGTH,
-  passwordMeetsPolicy,
-} from "@/lib/validation"
-import { authClient } from "@/lib/auth-client"
+} from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { PasswordStrengthMeter } from "@/components/password-strength";
+import { PASSWORD_MIN_LENGTH, passwordMeetsPolicy } from "@/lib/validation";
+import { authClient } from "@/lib/auth-client";
 
 export function ResetPasswordForm({
   token,
   invalid,
 }: {
-  token: string | null
-  invalid: boolean
+  token: string | null;
+  invalid: boolean;
 }) {
-  const [newPassword, setNewPassword] = useState("")
-  const [confirmPassword, setConfirmPassword] = useState("")
-  const [loading, setLoading] = useState(false)
+  const t = useTranslations("auth.reset");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [loading, setLoading] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<{
-    newPassword?: string
-    confirm?: string
-  }>({})
-  const [formError, setFormError] = useState<string | null>(null)
-  const [done, setDone] = useState(false)
+    newPassword?: string;
+    confirm?: string;
+  }>({});
+  const [formError, setFormError] = useState<string | null>(null);
+  const [done, setDone] = useState(false);
   // An INVALID_TOKEN from better-auth, or a direct visit without a token,
   // means the link is broken - don't show the form at all.
-  const [linkInvalid, setLinkInvalid] = useState(invalid || !token)
+  const [linkInvalid, setLinkInvalid] = useState(invalid || !token);
 
   async function handleSubmit(e: FormEvent) {
-    e.preventDefault()
-    const errors: typeof fieldErrors = {}
+    e.preventDefault();
+    const errors: typeof fieldErrors = {};
     if (!newPassword) {
-      errors.newPassword = "Enter a new password."
+      errors.newPassword = t("enterNewPassword");
     } else if (!passwordMeetsPolicy(newPassword)) {
-      errors.newPassword = "Password doesn't meet the requirements."
+      errors.newPassword = t("passwordPolicyError");
     }
     if (!confirmPassword) {
-      errors.confirm = "Confirm your new password."
+      errors.confirm = t("confirmPassword");
     } else if (newPassword !== confirmPassword) {
-      errors.confirm = "Passwords don't match."
+      errors.confirm = t("passwordsDontMatch");
     }
     if (Object.keys(errors).length > 0) {
-      setFieldErrors(errors)
-      return
+      setFieldErrors(errors);
+      return;
     }
-    setFieldErrors({})
-    setFormError(null)
+    setFieldErrors({});
+    setFormError(null);
 
-    setLoading(true)
+    setLoading(true);
     const { error } = await authClient.resetPassword({
       newPassword,
       token: token ?? undefined,
-    })
-    setLoading(false)
+    });
+    setLoading(false);
 
     if (error) {
       if (error.code === "INVALID_TOKEN") {
         // The token was consumed or expired between the redirect and submit.
-        setLinkInvalid(true)
-        return
+        setLinkInvalid(true);
+        return;
       }
-      if (error.code === "PASSWORD_TOO_SHORT" || /password/i.test(error.message ?? "")) {
+      if (
+        error.code === "PASSWORD_TOO_SHORT" ||
+        /password/i.test(error.message ?? "")
+      ) {
         setFieldErrors({
-          newPassword: error.message ?? "Password doesn't meet the requirements.",
-        })
-        return
+          newPassword: error.message ?? t("passwordPolicyError"),
+        });
+        return;
       }
-      setFormError(error.message ?? "Could not reset your password. Try again.")
-      return
+      setFormError(
+        error.message ?? "Could not reset your password. Try again.",
+      );
+      return;
     }
 
-    setDone(true)
+    setDone(true);
   }
 
   if (done) {
     return (
       <div className="flex flex-col gap-6">
-        <div className="flex flex-col items-center gap-3 rounded-lg border border-border bg-card p-8 text-center">
-          <span className="flex size-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+        <div className="border-border bg-card flex flex-col items-center gap-3 rounded-lg border p-8 text-center">
+          <span className="bg-primary/10 text-primary flex size-12 items-center justify-center rounded-full">
             <CheckCircleIcon className="size-6" />
           </span>
-          <h2 className="text-lg font-semibold tracking-tight">Password updated</h2>
-          <p className="text-sm leading-relaxed text-muted-foreground">
-            Your password has been reset and all sessions were signed out -
-            sign in with your new password.
+          <h2 className="text-lg font-semibold tracking-tight">
+            {t("passwordUpdated")}
+          </h2>
+          <p className="text-muted-foreground text-sm leading-relaxed">
+            {t("passwordUpdatedDescription")}
           </p>
         </div>
         <Button
@@ -110,23 +111,24 @@ export function ResetPasswordForm({
           nativeButton={false}
           render={<Link href="/login" />}
         >
-          Sign in
+          {t("signIn")}
         </Button>
       </div>
-    )
+    );
   }
 
   if (linkInvalid) {
     return (
       <div className="flex flex-col gap-6">
-        <div className="flex flex-col items-center gap-3 rounded-lg border border-border bg-card p-8 text-center">
-          <span className="flex size-12 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+        <div className="border-border bg-card flex flex-col items-center gap-3 rounded-lg border p-8 text-center">
+          <span className="bg-destructive/10 text-destructive flex size-12 items-center justify-center rounded-full">
             <LinkIcon className="size-6" />
           </span>
-          <h2 className="text-lg font-semibold tracking-tight">Invalid or expired link</h2>
-          <p className="text-sm leading-relaxed text-muted-foreground">
-            This password reset link is invalid or has expired. Request a new
-            one to continue.
+          <h2 className="text-lg font-semibold tracking-tight">
+            {t("invalidLink")}
+          </h2>
+          <p className="text-muted-foreground text-sm leading-relaxed">
+            {t("invalidLinkDescription")}
           </p>
         </div>
         <Button
@@ -135,10 +137,10 @@ export function ResetPasswordForm({
           nativeButton={false}
           render={<Link href="/forgot-password" />}
         >
-          Request a new link
+          {t("requestNewLink")}
         </Button>
       </div>
-    )
+    );
   }
 
   return (
@@ -151,22 +153,24 @@ export function ResetPasswordForm({
           </Alert>
         )}
         <Field>
-          <FieldLabel htmlFor="reset-new-password">New password</FieldLabel>
+          <FieldLabel htmlFor="reset-new-password">
+            {t("newPassword")}
+          </FieldLabel>
           <Input
             id="reset-new-password"
             type="password"
             autoComplete="new-password"
             value={newPassword}
             onChange={(e) => {
-              setNewPassword(e.target.value)
-              setFieldErrors((p) => ({ ...p, newPassword: undefined }))
+              setNewPassword(e.target.value);
+              setFieldErrors((p) => ({ ...p, newPassword: undefined }));
             }}
             onBlur={() => {
               if (newPassword && !passwordMeetsPolicy(newPassword)) {
                 setFieldErrors((p) => ({
                   ...p,
-                  newPassword: "Password doesn't meet the requirements.",
-                }))
+                  newPassword: t("passwordPolicyError"),
+                }));
               }
             }}
             aria-invalid={Boolean(fieldErrors.newPassword)}
@@ -179,14 +183,13 @@ export function ResetPasswordForm({
           )}
           {!newPassword && !fieldErrors.newPassword && (
             <FieldDescription>
-              At least {PASSWORD_MIN_LENGTH} characters, with an uppercase
-              letter, a number and a symbol.
+              {t("passwordDescription", { length: PASSWORD_MIN_LENGTH })}
             </FieldDescription>
           )}
         </Field>
         <Field>
           <FieldLabel htmlFor="reset-confirm-password">
-            Confirm new password
+            {t("confirmNewPassword")}
           </FieldLabel>
           <Input
             id="reset-confirm-password"
@@ -194,26 +197,28 @@ export function ResetPasswordForm({
             autoComplete="new-password"
             value={confirmPassword}
             onChange={(e) => {
-              setConfirmPassword(e.target.value)
-              setFieldErrors((p) => ({ ...p, confirm: undefined }))
+              setConfirmPassword(e.target.value);
+              setFieldErrors((p) => ({ ...p, confirm: undefined }));
             }}
             onBlur={() => {
               if (confirmPassword && confirmPassword !== newPassword) {
                 setFieldErrors((p) => ({
                   ...p,
-                  confirm: "Passwords don't match.",
-                }))
+                  confirm: t("passwordsDontMatch"),
+                }));
               }
             }}
             aria-invalid={Boolean(fieldErrors.confirm)}
             required
           />
-          {fieldErrors.confirm && <FieldError>{fieldErrors.confirm}</FieldError>}
+          {fieldErrors.confirm && (
+            <FieldError>{fieldErrors.confirm}</FieldError>
+          )}
         </Field>
         <Button type="submit" className="w-full" disabled={loading}>
-          {loading ? "Resetting..." : "Reset password"}
+          {loading ? t("resetting") : t("resetPassword")}
         </Button>
       </FieldGroup>
     </form>
-  )
+  );
 }

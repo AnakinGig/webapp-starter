@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { authClient } from "@/lib/auth-client";
@@ -10,6 +11,7 @@ import {
 } from "@/lib/oauth-providers";
 
 export function OAuthButtons() {
+  const t = useTranslations("common");
   const providers = useConfiguredProviders();
 
   // Loading: keep the row height so the form doesn't jump.
@@ -34,7 +36,7 @@ export function OAuthButtons() {
           key={p.id}
           type="button"
           variant="outline"
-          aria-label={`Continue with ${p.label}`}
+          aria-label={t("continueWithProvider", { provider: p.label })}
           onClick={() => {
             void authClient.signIn.social({ provider: p.id });
           }}

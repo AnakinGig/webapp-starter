@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { CookieIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -21,6 +22,7 @@ import {
 } from "@/lib/consent";
 
 export function CookieConsent() {
+  const t = useTranslations("consent");
   const [showBanner, setShowBanner] = useState(false);
   const [prefsOpen, setPrefsOpen] = useState(false);
   const [prefs, setPrefs] = useState<CookieConsentChoices>({
@@ -72,7 +74,7 @@ export function CookieConsent() {
       {showBanner && (
         <div
           role="region"
-          aria-label="Cookie consent"
+          aria-label={t("ariaLabel")}
           className="fixed inset-x-0 bottom-0 z-40"
         >
           <div className="mx-auto w-full max-w-6xl px-4 pb-4 sm:px-6">
@@ -81,24 +83,18 @@ export function CookieConsent() {
                 <div className="flex items-start gap-3 sm:items-center">
                   <CookieIcon className="text-muted-foreground mt-0.5 size-5 shrink-0 sm:mt-0" />
                   <p className="text-muted-foreground text-sm leading-relaxed">
-                    We use{" "}
-                    <span className="text-foreground font-medium">
-                      essential and technical cookies
-                    </span>{" "}
-                    to keep you signed in, remember your choices, and make the
-                    app work. We only use analytics or marketing cookies if you
-                    allow them - you can change this anytime.
+                    {t("bannerText")}
                   </p>
                 </div>
                 <div className="flex shrink-0 flex-wrap items-center gap-2">
                   <Button variant="ghost" size="sm" onClick={openPreferences}>
-                    Preferences
+                    {t("preferences")}
                   </Button>
                   <Button variant="outline" size="sm" onClick={essentialOnly}>
-                    Essential only
+                    {t("essentialOnly")}
                   </Button>
                   <Button size="sm" onClick={acceptAll}>
-                    Accept all
+                    {t("acceptAll")}
                   </Button>
                 </div>
               </div>
@@ -110,22 +106,18 @@ export function CookieConsent() {
       <Dialog open={prefsOpen} onOpenChange={setPrefsOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Cookie preferences</DialogTitle>
-            <DialogDescription>
-              Essential cookies keep the app working. Analytics and marketing
-              cookies are optional and only load if you allow them.
-            </DialogDescription>
+            <DialogTitle>{t("title")}</DialogTitle>
+            <DialogDescription>{t("description")}</DialogDescription>
           </DialogHeader>
 
           <div className="flex flex-col gap-4">
             <div className="flex items-start justify-between gap-4">
               <div className="flex flex-col gap-0.5">
                 <p id="cookie-essential-label" className="text-sm font-medium">
-                  Essential
+                  {t("essential")}
                 </p>
                 <p className="text-muted-foreground text-xs leading-relaxed">
-                  Keeps you signed in, remembers your consent, and keeps the app
-                  working. Always on.
+                  {t("essentialDescription")}
                 </p>
               </div>
               <Switch
@@ -139,10 +131,10 @@ export function CookieConsent() {
             <div className="flex items-start justify-between gap-4">
               <div className="flex flex-col gap-0.5">
                 <p id="cookie-analytics-label" className="text-sm font-medium">
-                  Analytics
+                  {t("analytics")}
                 </p>
                 <p className="text-muted-foreground text-xs leading-relaxed">
-                  Anonymous usage statistics that help us improve the product.
+                  {t("analyticsDescription")}
                 </p>
               </div>
               <Switch
@@ -158,10 +150,10 @@ export function CookieConsent() {
             <div className="flex items-start justify-between gap-4">
               <div className="flex flex-col gap-0.5">
                 <p id="cookie-marketing-label" className="text-sm font-medium">
-                  Marketing
+                  {t("marketing")}
                 </p>
                 <p className="text-muted-foreground text-xs leading-relaxed">
-                  Personalised offers and campaigns from our partners.
+                  {t("marketingDescription")}
                 </p>
               </div>
               <Switch
@@ -177,9 +169,9 @@ export function CookieConsent() {
 
           <DialogFooter>
             <Button variant="outline" onClick={essentialOnly}>
-              Essential only
+              {t("essentialOnly")}
             </Button>
-            <Button onClick={savePrefs}>Save preferences</Button>
+            <Button onClick={savePrefs}>{t("savePreferences")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

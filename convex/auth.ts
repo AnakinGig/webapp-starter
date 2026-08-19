@@ -208,6 +208,16 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) => {
           defaultValue: true,
           input: true,
         },
+        // Locale preference - set from the Settings language switcher so the
+        // same language follows the user across devices. The resolver in
+        // src/i18n/request.ts reads the locale cookie (written by the
+        // switcher for everyone); this field persists it on the account.
+        language: {
+          type: "string",
+          required: false,
+          defaultValue: "en",
+          input: true,
+        },
       },
       // Change email with verification. Only the NEW address gets a
       // verification link (sent via the existing `sendVerificationEmail`

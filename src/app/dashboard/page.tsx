@@ -1,20 +1,24 @@
-import { UserManagement } from "@/components/dashboard/user-management"
+import { getTranslations } from "next-intl/server";
 
-export default function DashboardPage() {
+import { UserManagement } from "@/components/dashboard/user-management";
+
+export default async function DashboardPage() {
+  const t = await getTranslations("dashboard");
+
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
       <div className="mb-8 flex flex-col gap-1">
-        <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
-          Dashboard
+        <p className="text-muted-foreground font-mono text-xs tracking-widest uppercase">
+          {t("title")}
         </p>
         <h1 className="text-2xl font-semibold tracking-tight text-balance">
-          Welcome back
+          {t("welcomeBack")}
         </h1>
-      <p className="text-sm leading-relaxed text-muted-foreground text-pretty">
-           Manage users, roles, and access across your workspace.
-         </p>
+        <p className="text-muted-foreground text-sm leading-relaxed text-pretty">
+          {t("description")}
+        </p>
       </div>
       <UserManagement />
     </div>
-  )
+  );
 }

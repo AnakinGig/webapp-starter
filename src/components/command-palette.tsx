@@ -4,6 +4,7 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import { Dialog } from "@base-ui/react/dialog";
 import { useTheme } from "next-themes";
+import { useTranslations } from "next-intl";
 import {
   Cookie,
   CornerDownLeft,
@@ -75,6 +76,7 @@ export function CommandPaletteProvider({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const t = useTranslations("palette");
   const { resolvedTheme, setTheme } = useTheme();
   const { data: session } = authClient.useSession();
   const user = session?.user;
@@ -158,11 +160,11 @@ export function CommandPaletteProvider({
     const groups: CommandGroup[] = [
       {
         id: "pages",
-        label: "Pages",
+        label: t("groups.pages"),
         items: [
           {
             id: "home",
-            label: "Home",
+            label: t("items.home"),
             keywords: ["overview", "landing", "start", "homepage"],
             icon: <House className="size-4" />,
             action: go("/"),
@@ -171,7 +173,7 @@ export function CommandPaletteProvider({
             ? [
                 {
                   id: "dashboard",
-                  label: "Dashboard",
+                  label: t("items.dashboard"),
                   keywords: ["admin", "users", "manage", "panel"],
                   icon: <LayoutDashboard className="size-4" />,
                   action: go("/dashboard"),
@@ -180,7 +182,7 @@ export function CommandPaletteProvider({
             : []),
           {
             id: "settings",
-            label: "Settings",
+            label: t("items.settings"),
             keywords: [
               "preferences",
               "profile",
@@ -196,14 +198,14 @@ export function CommandPaletteProvider({
             : [
                 {
                   id: "sign-in",
-                  label: "Sign in",
+                  label: t("items.signIn"),
                   keywords: ["login", "log in", "auth"],
                   icon: <LogIn className="size-4" />,
                   action: go("/login"),
                 },
                 {
                   id: "create-account",
-                  label: "Create account",
+                  label: t("items.createAccount"),
                   keywords: ["register", "sign up", "join"],
                   icon: <UserPlus className="size-4" />,
                   action: go("/register"),
@@ -213,14 +215,14 @@ export function CommandPaletteProvider({
       },
       {
         id: "actions",
-        label: "Actions",
+        label: t("groups.actions"),
         items: [
           {
             id: "toggle-theme",
             label:
               resolvedTheme === "dark"
-                ? "Switch to light theme"
-                : "Switch to dark theme",
+                ? t("items.switchToLight")
+                : t("items.switchToDark"),
             keywords: ["dark", "light", "mode", "appearance", "color"],
             icon:
               resolvedTheme === "dark" ? (
@@ -234,7 +236,7 @@ export function CommandPaletteProvider({
           },
           {
             id: "system-theme",
-            label: "Use system theme",
+            label: t("items.systemTheme"),
             keywords: ["auto", "default", "follow", "device"],
             icon: <Monitor className="size-4" />,
             action: () => {
@@ -245,7 +247,7 @@ export function CommandPaletteProvider({
             ? [
                 {
                   id: "sign-out",
-                  label: "Sign out",
+                  label: t("items.signOut"),
                   keywords: ["logout", "log out", "exit"],
                   icon: <LogOut className="size-4" />,
                   action: handleSignOut,
@@ -256,7 +258,7 @@ export function CommandPaletteProvider({
       },
       {
         id: "legal",
-        label: "Legal",
+        label: t("groups.legal"),
         items: appSettings.footerNav.legal.map((link) => ({
           id: link.href.replace(/[^a-z0-9]+/gi, "-").replace(/^-+|-+$/g, ""),
           label: link.label,
@@ -274,7 +276,7 @@ export function CommandPaletteProvider({
       },
     ];
     return groups;
-  }, [session, isAdmin, resolvedTheme, setTheme, go, handleSignOut]);
+  }, [session, isAdmin, resolvedTheme, setTheme, go, handleSignOut, t]);
 
   // Only the groups/items matching the query are rendered, best matches
   // first within each group (label prefix > label contains > keyword).
@@ -369,7 +371,7 @@ export function CommandPaletteProvider({
                 value={query}
                 onChange={handleInputChange}
                 onKeyDown={handleInputKeyDown}
-                placeholder="Type a command or search..."
+                placeholder={t("placeholder")}
                 role="combobox"
                 aria-expanded={open}
                 aria-controls="command-palette-list"
@@ -426,7 +428,7 @@ export function CommandPaletteProvider({
                 ))
               ) : (
                 <div className="text-muted-foreground px-2 py-6 text-center text-sm">
-                  No results found.
+                  {t("noResults")}
                 </div>
               )}
             </div>
@@ -439,19 +441,19 @@ export function CommandPaletteProvider({
                 <kbd className="bg-muted rounded border px-1.5 py-0.5 font-mono text-[10px]">
                   ↓
                 </kbd>
-                Navigate
+                {t("navigate")}
               </span>
               <span className="flex items-center gap-1">
                 <kbd className="bg-muted rounded border px-1.5 py-0.5 font-mono text-[10px]">
                   <CornerDownLeft className="size-2.5" />
                 </kbd>
-                Select
+                {t("select")}
               </span>
               <span className="flex items-center gap-1">
                 <kbd className="bg-muted rounded border px-1.5 py-0.5 font-mono text-[10px]">
                   esc
                 </kbd>
-                Close
+                {t("close")}
               </span>
             </div>
           </Dialog.Popup>
@@ -463,6 +465,7 @@ export function CommandPaletteProvider({
 
 export function CommandPaletteTrigger() {
   const { openPalette } = useCommandPalette();
+  const t = useTranslations("palette");
   const [isMac, setIsMac] = React.useState(false);
 
   React.useEffect(() => {
@@ -475,16 +478,12 @@ export function CommandPaletteTrigger() {
         variant="outline"
         size="sm"
         onClick={openPalette}
-        aria-label={
-          isMac
-            ? "Open command palette (Cmd+K)"
-            : "Open command palette (Ctrl+K)"
-        }
+        aria-label={isMac ? t("openPaletteMac") : t("openPaletteOther")}
         className="text-muted-foreground hidden w-40 justify-between gap-2 sm:flex"
       >
         <span className="flex items-center gap-2">
           <Search className="size-3.5" />
-          Search
+          {t("search")}
         </span>
         <kbd className="bg-muted text-muted-foreground pointer-events-none rounded border px-1.5 py-0.5 font-mono text-[10px]">
           {isMac ? "⌘K" : "Ctrl K"}
@@ -494,11 +493,7 @@ export function CommandPaletteTrigger() {
         variant="ghost"
         size="icon-sm"
         onClick={openPalette}
-        aria-label={
-          isMac
-            ? "Open command palette (Cmd+K)"
-            : "Open command palette (Ctrl+K)"
-        }
+        aria-label={isMac ? t("openPaletteMac") : t("openPaletteOther")}
         className="sm:hidden"
       >
         <Search className="size-4" />

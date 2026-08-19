@@ -1,37 +1,45 @@
-import Link from "next/link"
-import type { Metadata } from "next"
-import { AuthShell } from "@/components/auth-shell"
-import { ResetPasswordForm } from "@/components/reset-password-form"
+import Link from "next/link";
+import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 
-export const metadata: Metadata = {
-  title: "Reset password",
+import { AuthShell } from "@/components/auth-shell";
+import { ResetPasswordForm } from "@/components/reset-password-form";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("auth.reset");
+  return { title: t("title") };
 }
 
 export default async function ResetPasswordPage({
   searchParams,
 }: {
-  searchParams: Promise<{ token?: string; error?: string }>
+  searchParams: Promise<{ token?: string; error?: string }>;
 }) {
-  const { token, error } = await searchParams
+  const { token, error } = await searchParams;
+  const t = await getTranslations("auth.reset");
+  const tc = await getTranslations("common");
 
   return (
     <AuthShell
       eyebrow="/reset-password"
-      title="Set a new password"
-      description="Choose a strong password you don't use anywhere else."
+      title={t("title")}
+      description={t("description")}
       footer={
         <>
-          {"Remembered it? "}
+          {t("remembered")}
           <Link
             href="/login"
-            className="font-medium text-foreground underline-offset-4 hover:underline"
+            className="text-foreground font-medium underline-offset-4 hover:underline"
           >
-            Sign in
+            {tc("signIn")}
           </Link>
         </>
       }
     >
-      <ResetPasswordForm token={token ?? null} invalid={error === "INVALID_TOKEN"} />
+      <ResetPasswordForm
+        token={token ?? null}
+        invalid={error === "INVALID_TOKEN"}
+      />
     </AuthShell>
-  )
+  );
 }

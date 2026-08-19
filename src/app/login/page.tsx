@@ -1,28 +1,36 @@
-import Link from "next/link"
-import type { Metadata } from "next"
-import { AuthShell } from "@/components/auth-shell"
-import { LoginForm } from "@/components/login-form"
+import Link from "next/link";
+import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 
-export const metadata: Metadata = {
-  title: "Sign in",
+import { AuthShell } from "@/components/auth-shell";
+import { LoginForm } from "@/components/login-form";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("auth.login");
+  return { title: t("title") };
 }
 
-export default function LoginPage() {
+export default async function LoginPage() {
+  const t = await getTranslations("auth.login");
+
   return (
     <AuthShell
       eyebrow="/login"
-      title="Sign in to your account"
-      description="Sign in to your account with your email and password."
+      title={t("title")}
+      description={t("description")}
       footer={
         <>
-          {"Don't have an account? "}
-          <Link href="/register" className="font-medium text-foreground underline-offset-4 hover:underline">
-            Create one
+          {t("noAccount")}
+          <Link
+            href="/register"
+            className="text-foreground font-medium underline-offset-4 hover:underline"
+          >
+            {t("createOne")}
           </Link>
         </>
       }
     >
       <LoginForm />
     </AuthShell>
-  )
+  );
 }

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 import { QRCodeSVG } from "qrcode.react";
 import {
   CheckIcon,
@@ -52,12 +53,12 @@ function secretFromUri(uri: string): string {
 }
 
 /** Copy text to the clipboard with a transient "Copied" confirmation. */
-async function copyText(text: string) {
+async function copyText(text: string, t: (key: string) => string) {
   try {
     await navigator.clipboard.writeText(text);
-    toast.success("Copied to clipboard.");
+    toast.success(t("copied"));
   } catch {
-    toast.error("Couldn't copy to clipboard.");
+    toast.error(t("copyFailed"));
   }
 }
 
@@ -70,6 +71,8 @@ type EnableState =
     };
 
 export function TwoFactorSection() {
+  const t = useTranslations("twoFactor");
+  const tc = useTranslations("common");
   const { data: session, refetch: refetchSession } = authClient.useSession();
   const isEnabled = session?.user?.twoFactorEnabled === true;
 
@@ -119,7 +122,7 @@ export function TwoFactorSection() {
   async function startSetup(e: React.FormEvent) {
     e.preventDefault();
     if (hasPassword && !enablePassword) {
-      setPasswordError("Enter your password to continue.");
+      setPasswordError(t("enterPasswordToContinue"));
       return;
     }
     setPasswordError(null);
@@ -129,11 +132,11 @@ export function TwoFactorSection() {
     });
     setEnabling(false);
     if (error) {
-      setPasswordError(error.message ?? "Couldn't start the setup.");
+      setPasswordError(error.message ?? t("setupStartFailed"));
       return;
     }
     if (!data?.totpURI) {
-      setPasswordError("The server didn't return a setup link. Try again.");
+      setPasswordError(t("noSetupLink"));
       return;
     }
     setEnableState({
@@ -148,7 +151,7 @@ export function TwoFactorSection() {
     e.preventDefault();
     const trimmed = code.replace(/\s/g, "");
     if (!/^\d{6}$/.test(trimmed)) {
-      setCodeError("Enter the 6-digit code from your authenticator app.");
+      setCodeError(t("enterSixDigitCode"));
       return;
     }
     setCodeError(null);
@@ -156,10 +159,10 @@ export function TwoFactorSection() {
     const { error } = await authClient.twoFactor.verifyTotp({ code: trimmed });
     setVerifying(false);
     if (error) {
-      setCodeError(error.message ?? "That code wasn't accepted. Try again.");
+      setCodeError(error.message ?? t("codeRejected"));
       return;
     }
-    toast.success("Two-factor authentication turned on.");
+    toast.success(t("turnedOn"));
     setEnableOpen(false);
     resetEnable();
     void refetchSession();
@@ -168,7 +171,7 @@ export function TwoFactorSection() {
   async function handleDisable(e: React.FormEvent) {
     e.preventDefault();
     if (hasPassword && !disablePassword) {
-      setDisableError("Enter your password to disable two-factor.");
+      setDisableError(t("enterPasswordToDisable"));
       return;
     }
     setDisableError(null);
@@ -178,10 +181,10 @@ export function TwoFactorSection() {
     });
     setDisabling(false);
     if (error) {
-      setDisableError(error.message ?? "Couldn't disable two-factor.");
+      setDisableError(error.message ?? t("disableFailed"));
       return;
     }
-    toast.success("Two-factor authentication turned off.");
+    toast.success(t("turnedOff"));
     setDisableOpen(false);
     setDisablePassword("");
     setDisableError(null);
@@ -191,7 +194,7 @@ export function TwoFactorSection() {
   async function handleGenerateCodes(e: React.FormEvent) {
     e.preventDefault();
     if (hasPassword && !codesPassword) {
-      setCodesError("Enter your password to generate new backup codes.");
+      setCodesError(t("enterPasswordForCodes"));
       return;
     }
     setCodesError(null);
@@ -201,7 +204,7 @@ export function TwoFactorSection() {
     });
     setGenerating(false);
     if (error) {
-      setCodesError(error.message ?? "Couldn't generate new backup codes.");
+      setCodesError(error.message ?? t("generateCodesFailed"));
       return;
     }
     setNewCodes(data?.backupCodes ?? []);
@@ -218,11 +221,8 @@ export function TwoFactorSection() {
     <>
       <Card>
         <CardHeader>
-          <CardTitle>Two-factor authentication</CardTitle>
-          <CardDescription>
-            Add an extra layer of security. Signing in will require a code from
-            your authenticator app in addition to your password.
-          </CardDescription>
+          <CardTitle>{t("title")}</CardTitle>
+          <CardDescription>{t("description")}</CardDescription>
         </CardHeader>
         <CardContent className="pb-(--card-spacing)">
           <div className="border-border flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
@@ -232,13 +232,11 @@ export function TwoFactorSection() {
                   id="two-factor-label"
                   className="truncate text-sm font-medium"
                 >
-                  Authenticator app
+                  {t("authenticatorApp")}
                 </p>
               </div>
               <p className="text-muted-foreground mt-1 text-sm">
-                {isEnabled
-                  ? "Your account is protected by a one-time code."
-                  : "You'll scan a code with your phone to get started."}
+                {isEnabled ? t("protectedByCode") : t("scanToGetStarted")}
               </p>
             </div>
             {hasPassword === null ? (
@@ -257,7 +255,7 @@ export function TwoFactorSection() {
                       setCodesOpen(true);
                     }}
                   >
-                    Regenerate backup codes
+                    {t("regenerateCodes")}
                   </Button>
                 )}
                 <Switch
@@ -291,16 +289,14 @@ export function TwoFactorSection() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {enableState?.step === "setup"
-                ? "Scan the code"
-                : "Turn on two-factor authentication"}
+              {enableState?.step === "setup" ? t("scanCode") : t("turnOn")}
             </DialogTitle>
             <DialogDescription>
               {enableState?.step === "setup"
-                ? "Scan the code with your phone's authenticator app, then enter the code it shows to confirm."
+                ? t("scanCodeDescription")
                 : hasPassword
-                  ? "Confirm your password to start."
-                  : "Set up a one-time code to protect your account."}
+                  ? t("confirmPasswordToStart")
+                  : t("setupDescription")}
             </DialogDescription>
           </DialogHeader>
 
@@ -318,7 +314,7 @@ export function TwoFactorSection() {
                     <div className="flex w-full items-center justify-between gap-2">
                       <div className="min-w-0">
                         <p className="text-muted-foreground text-xs">
-                          Can&apos;t scan? Enter this code manually:
+                          {t("manualEntryHint")}
                         </p>
                         <p className="font-mono text-xs break-all">
                           {manualSecret}
@@ -329,8 +325,8 @@ export function TwoFactorSection() {
                         variant="ghost"
                         size="icon-sm"
                         className="shrink-0"
-                        onClick={() => void copyText(manualSecret)}
-                        aria-label="Copy setup code"
+                        onClick={() => void copyText(manualSecret, t)}
+                        aria-label={t("copySetupCode")}
                       >
                         <CopyIcon className="size-4" />
                       </Button>
@@ -341,11 +337,10 @@ export function TwoFactorSection() {
                 <div className="border-border rounded-lg border border-amber-500/40 bg-amber-500/5 p-3">
                   <p className="flex items-center gap-1.5 text-sm font-medium">
                     <TriangleAlertIcon className="size-3.5 shrink-0 text-amber-500" />
-                    Save your backup codes
+                    {t("saveBackupCodes")}
                   </p>
                   <p className="text-muted-foreground mt-1 text-xs">
-                    You can use these to sign in if you lose your phone. They
-                    are only shown once - store them somewhere safe.
+                    {t("saveBackupCodesDescription")}
                   </p>
                   <div className="mt-2 grid grid-cols-2 gap-1 font-mono text-xs sm:grid-cols-5">
                     {enableState.backupCodes.map((bc) => (
@@ -364,18 +359,18 @@ export function TwoFactorSection() {
                       size="sm"
                       className="mt-2"
                       onClick={() =>
-                        void copyText(enableState.backupCodes.join("\n"))
+                        void copyText(enableState.backupCodes.join("\n"), t)
                       }
                     >
                       <CopyIcon data-icon="inline-start" />
-                      Copy all
+                      {t("copyAll")}
                     </Button>
                   )}
                 </div>
 
                 <Field>
                   <FieldLabel htmlFor="2fa-setup-code">
-                    Authentication code
+                    {t("authCode")}
                   </FieldLabel>
                   <Input
                     id="2fa-setup-code"
@@ -394,18 +389,16 @@ export function TwoFactorSection() {
                   {codeError ? (
                     <FieldError>{codeError}</FieldError>
                   ) : (
-                    <FieldDescription>
-                      The 6-digit code shown in your authenticator app.
-                    </FieldDescription>
+                    <FieldDescription>{t("codeDescription")}</FieldDescription>
                   )}
                 </Field>
               </FieldGroup>
               <DialogFooter className="mt-4">
                 <DialogClose render={<Button variant="outline" />}>
-                  Cancel
+                  {tc("cancel")}
                 </DialogClose>
                 <Button type="submit" disabled={verifying}>
-                  {verifying ? "Verifying…" : "Enable"}
+                  {verifying ? t("verifying") : t("enable")}
                 </Button>
               </DialogFooter>
             </form>
@@ -415,7 +408,7 @@ export function TwoFactorSection() {
                 {hasPassword && (
                   <Field>
                     <FieldLabel htmlFor="2fa-enable-password">
-                      Current password
+                      {t("currentPassword")}
                     </FieldLabel>
                     <Input
                       id="2fa-enable-password"
@@ -440,11 +433,11 @@ export function TwoFactorSection() {
               </FieldGroup>
               <DialogFooter className="mt-4">
                 <DialogClose render={<Button variant="outline" />}>
-                  Cancel
+                  {tc("cancel")}
                 </DialogClose>
                 <Button type="submit" disabled={enabling}>
                   <SmartphoneIcon data-icon="inline-start" />
-                  {enabling ? "Starting setup…" : "Continue"}
+                  {enabling ? t("startingSetup") : t("continue")}
                 </Button>
               </DialogFooter>
             </form>
@@ -462,18 +455,15 @@ export function TwoFactorSection() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Turn off two-factor authentication?</DialogTitle>
-            <DialogDescription>
-              Your account will only require your password to sign in. This
-              lowers your account&apos;s security.
-            </DialogDescription>
+            <DialogTitle>{t("turnOffTitle")}</DialogTitle>
+            <DialogDescription>{t("turnOffDescription")}</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleDisable} noValidate>
             <FieldGroup>
               {hasPassword && (
                 <Field>
                   <FieldLabel htmlFor="2fa-disable-password">
-                    Current password
+                    {t("currentPassword")}
                   </FieldLabel>
                   <Input
                     id="2fa-disable-password"
@@ -498,10 +488,10 @@ export function TwoFactorSection() {
             </FieldGroup>
             <DialogFooter className="mt-4">
               <DialogClose render={<Button variant="outline" />}>
-                Cancel
+                {tc("cancel")}
               </DialogClose>
               <Button type="submit" variant="destructive" disabled={disabling}>
-                {disabling ? "Disabling…" : "Disable"}
+                {disabling ? t("disabling") : t("disable")}
               </Button>
             </DialogFooter>
           </form>
@@ -522,14 +512,14 @@ export function TwoFactorSection() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {newCodes ? "New backup codes" : "Regenerate backup codes"}
+              {newCodes ? t("newCodes") : t("regenerateCodes")}
             </DialogTitle>
             <DialogDescription>
               {newCodes
-                ? "Your old backup codes no longer work. Store these somewhere safe."
+                ? t("newCodesDescription")
                 : hasPassword
-                  ? "Confirm your password to generate a new set of backup codes. Your old codes will stop working."
-                  : "Generate a new set of backup codes. Your old codes will stop working."}
+                  ? t("regenerateConfirmPassword")
+                  : t("regenerateDescription")}
             </DialogDescription>
           </DialogHeader>
           {newCodes ? (
@@ -537,7 +527,7 @@ export function TwoFactorSection() {
               <div className="border-border rounded-lg border border-amber-500/40 bg-amber-500/5 p-3">
                 <p className="flex items-center gap-1.5 text-sm font-medium">
                   <TriangleAlertIcon className="size-3.5 shrink-0 text-amber-500" />
-                  These are shown only once
+                  {t("shownOnce")}
                 </p>
                 <div className="mt-2 grid grid-cols-2 gap-1 font-mono text-xs sm:grid-cols-5">
                   {newCodes.map((bc) => (
@@ -554,10 +544,10 @@ export function TwoFactorSection() {
                   variant="outline"
                   size="sm"
                   className="mt-2"
-                  onClick={() => void copyText(newCodes.join("\n"))}
+                  onClick={() => void copyText(newCodes.join("\n"), t)}
                 >
                   <CopyIcon data-icon="inline-start" />
-                  Copy all
+                  {t("copyAll")}
                 </Button>
               </div>
               <DialogFooter>
@@ -569,7 +559,8 @@ export function TwoFactorSection() {
                     setCodesError(null);
                   }}
                 >
-                  <CheckIcon data-icon="inline-start" />I saved my codes
+                  <CheckIcon data-icon="inline-start" />
+                  {t("savedCodes")}
                 </Button>
               </DialogFooter>
             </div>
@@ -579,7 +570,7 @@ export function TwoFactorSection() {
                 {hasPassword && (
                   <Field>
                     <FieldLabel htmlFor="2fa-codes-password">
-                      Current password
+                      {t("currentPassword")}
                     </FieldLabel>
                     <Input
                       id="2fa-codes-password"
@@ -604,11 +595,11 @@ export function TwoFactorSection() {
               </FieldGroup>
               <DialogFooter className="mt-4">
                 <DialogClose render={<Button variant="outline" />}>
-                  Cancel
+                  {tc("cancel")}
                 </DialogClose>
                 <Button type="submit" disabled={generating}>
                   <KeyRoundIcon data-icon="inline-start" />
-                  {generating ? "Generating…" : "Generate codes"}
+                  {generating ? t("generating") : t("generateCodes")}
                 </Button>
               </DialogFooter>
             </form>

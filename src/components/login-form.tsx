@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import {
   MailWarningIcon,
   ShieldCheckIcon,
@@ -28,6 +29,9 @@ import { useConfiguredProviders } from "@/lib/oauth-providers";
 
 export function LoginForm() {
   const router = useRouter();
+  const t = useTranslations("auth.login");
+  const t2 = useTranslations("auth.twoFactor");
+  const tc = useTranslations("common");
   const providers = useConfiguredProviders();
   const hasOAuth = (providers?.length ?? 0) > 0;
   const [email, setEmail] = useState("");
@@ -54,7 +58,7 @@ export function LoginForm() {
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     if (email && !isValidEmail(email)) {
-      setEmailError("Enter a valid email address.");
+      setEmailError(t("invalidEmail"));
       return;
     }
     setEmailError(null);
@@ -67,7 +71,7 @@ export function LoginForm() {
     });
     setLoading(false);
     if (error) {
-      setFormError(error.message ?? "Invalid email or password.");
+      setFormError(error.message ?? t("invalidCredentials"));
       return;
     }
     // 2FA enabled: the plugin returns `twoFactorRedirect` and no session. The
@@ -99,11 +103,11 @@ export function LoginForm() {
     e.preventDefault();
     const trimmed = code.replace(/\s/g, "");
     if (!trimmed) {
-      setCodeError("Enter your authentication code.");
+      setCodeError(t2("enterCode"));
       return;
     }
     if (!useBackupCode && !/^\d{6}$/.test(trimmed)) {
-      setCodeError("Enter the 6-digit code from your authenticator app.");
+      setCodeError(t2("sixDigitCode"));
       return;
     }
     setCodeError(null);
@@ -132,14 +136,12 @@ export function LoginForm() {
           <Alert>
             <ShieldCheckIcon />
             <AlertDescription className="leading-relaxed">
-              Two-factor authentication is enabled on{" "}
-              <strong>{twoFactor.email}</strong>. Enter the code from your
-              authenticator app to finish signing in.
+              {t2("enabledOn", { email: twoFactor.email })}
             </AlertDescription>
           </Alert>
           <Field>
             <FieldLabel htmlFor="2fa-code">
-              {useBackupCode ? "Backup code" : "Authentication code"}
+              {useBackupCode ? t2("backupCode") : t2("authCode")}
             </FieldLabel>
             <Input
               id="2fa-code"
@@ -158,14 +160,9 @@ export function LoginForm() {
             {codeError ? (
               <FieldError>{codeError}</FieldError>
             ) : useBackupCode ? (
-              <FieldDescription>
-                Use a backup code only if you can&apos;t access your
-                authenticator app. Each code works once.
-              </FieldDescription>
+              <FieldDescription>{t2("backupCodeDescription")}</FieldDescription>
             ) : (
-              <FieldDescription>
-                The code refreshes every 30 seconds.
-              </FieldDescription>
+              <FieldDescription>{t2("codeRefreshes")}</FieldDescription>
             )}
           </Field>
           {!useBackupCode && (
@@ -178,14 +175,13 @@ export function LoginForm() {
                   }
                 />
                 <span className="text-muted-foreground">
-                  Trust this device for 30 days - you won&apos;t be asked for a
-                  code on it again.
+                  {t2("trustDevice")}
                 </span>
               </label>
             </Field>
           )}
           <Button type="submit" className="w-full" disabled={verifying}>
-            {verifying ? "Verifying..." : "Verify"}
+            {verifying ? t2("verifying") : t2("verify")}
           </Button>
           <button
             type="button"
@@ -196,9 +192,7 @@ export function LoginForm() {
               setCodeError(null);
             }}
           >
-            {useBackupCode
-              ? "Use an authenticator code instead"
-              : "Use a backup code instead"}
+            {useBackupCode ? t2("useAuthCode") : t2("useBackupCode")}
           </button>
         </FieldGroup>
       </form>
@@ -211,9 +205,7 @@ export function LoginForm() {
         <Alert className="border-amber-500/40 *:[svg]:text-amber-500">
           <MailWarningIcon />
           <AlertDescription className="leading-relaxed">
-            You&apos;re signed in, but <strong>{unverifiedEmail}</strong>{" "}
-            isn&apos;t verified yet. Check your inbox for the link we sent when
-            you signed up, or resend it from Settings → Security.
+            {t2("unverifiedWarning", { email: unverifiedEmail })}
           </AlertDescription>
         </Alert>
         <Button
@@ -224,7 +216,7 @@ export function LoginForm() {
             router.refresh();
           }}
         >
-          Continue to dashboard
+          {t("continueToDashboard")}
         </Button>
       </div>
     );
@@ -236,7 +228,7 @@ export function LoginForm() {
         {hasOAuth && (
           <>
             <OAuthButtons />
-            <FieldSeparator>or continue with email</FieldSeparator>
+            <FieldSeparator>{tc("orContinueWithEmail")}</FieldSeparator>
           </>
         )}
         {formError && (
@@ -246,7 +238,7 @@ export function LoginForm() {
           </Alert>
         )}
         <Field>
-          <FieldLabel htmlFor="email">Email</FieldLabel>
+          <FieldLabel htmlFor="email">{tc("email")}</FieldLabel>
           <Input
             id="email"
             type="email"
@@ -260,7 +252,7 @@ export function LoginForm() {
             }}
             onBlur={() => {
               if (email && !isValidEmail(email)) {
-                setEmailError("Enter a valid email address.");
+                setEmailError(t("invalidEmail"));
               }
             }}
             aria-invalid={Boolean(emailError)}
@@ -270,12 +262,12 @@ export function LoginForm() {
         </Field>
         <Field>
           <div className="flex items-center justify-between">
-            <FieldLabel htmlFor="password">Password</FieldLabel>
+            <FieldLabel htmlFor="password">{tc("password")}</FieldLabel>
             <Link
               href="/forgot-password"
               className="text-muted-foreground hover:text-foreground font-mono text-xs underline-offset-4 hover:underline"
             >
-              Forgot?
+              {t("forgot")}
             </Link>
           </div>
           <Input
@@ -291,7 +283,7 @@ export function LoginForm() {
           />
         </Field>
         <Button type="submit" className="w-full" disabled={loading}>
-          {loading ? "Signing in..." : "Sign in"}
+          {loading ? t("signingIn") : tc("signIn")}
         </Button>
       </FieldGroup>
     </form>

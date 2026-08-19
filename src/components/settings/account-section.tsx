@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 import { KeyRoundIcon, TriangleAlertIcon } from "lucide-react";
 
 import { authClient } from "@/lib/auth-client";
@@ -49,6 +50,8 @@ type LinkedAccount = {
 const CREDENTIAL_PROVIDER = "credential";
 
 export function AccountSection() {
+  const t = useTranslations("accountSection");
+  const tc = useTranslations("common");
   const providers = useConfiguredProviders();
   const [accounts, setAccounts] = useState<LinkedAccount[] | null>(null);
   const [loading, setLoading] = useState(true);
@@ -66,7 +69,7 @@ export function AccountSection() {
     const { data, error: listError } = await authClient.listAccounts();
     setLoading(false);
     if (listError) {
-      setError(listError.message ?? "Failed to load connected accounts.");
+      setError(listError.message ?? t("loadFailed"));
       return;
     }
     setAccounts(
@@ -99,7 +102,7 @@ export function AccountSection() {
     });
     setLinking(null);
     if (linkError) {
-      setError(linkError.message ?? "Couldn't connect this account.");
+      setError(linkError.message ?? t("linkFailed"));
       return;
     }
     // The browser is redirected to the provider; when the user comes back the
@@ -116,22 +119,19 @@ export function AccountSection() {
     setUnlinking(false);
     setUnlinkTarget(null);
     if (unlinkError) {
-      setError(unlinkError.message ?? "Couldn't disconnect this account.");
+      setError(unlinkError.message ?? t("unlinkFailed"));
       return;
     }
     await loadAccounts();
-    toast.success("Account disconnected.");
+    toast.success(t("accountDisconnected"));
   }
 
   return (
     <>
       <Card>
         <CardHeader>
-          <CardTitle>Connected accounts</CardTitle>
-          <CardDescription>
-            Link a provider to sign in with it and access your account from
-            anywhere. The provider&apos;s email must match your account email.
-          </CardDescription>
+          <CardTitle>{t("title")}</CardTitle>
+          <CardDescription>{t("description")}</CardDescription>
         </CardHeader>
         <CardContent className="p-0">
           {loading || !providers ? (
@@ -142,8 +142,7 @@ export function AccountSection() {
             </div>
           ) : error && !accounts ? (
             <p className="text-muted-foreground px-4 py-6 text-sm">
-              Couldn&apos;t load your connected accounts. Reload the page to try
-              again.
+              {t("loadError")}
             </p>
           ) : (
             <ul className="divide-border divide-y">
@@ -161,8 +160,10 @@ export function AccountSection() {
                       </p>
                       <p className="text-muted-foreground text-xs">
                         {linked
-                          ? `Connected ${formatDate(new Date(linked.createdAt))}`
-                          : "Not connected"}
+                          ? t("connectedOn", {
+                              date: formatDate(new Date(linked.createdAt)),
+                            })
+                          : t("notConnected")}
                       </p>
                     </div>
                     {linked ? (
@@ -176,19 +177,16 @@ export function AccountSection() {
                             size="sm"
                             disabled={isOnlyMethod}
                             title={
-                              isOnlyMethod
-                                ? "You need another way to sign in before disconnecting this account."
-                                : undefined
+                              isOnlyMethod ? t("needAnotherMethod") : undefined
                             }
                             onClick={() => setUnlinkTarget(linked)}
                           >
-                            Disconnect
+                            {t("disconnect")}
                           </Button>
                         </TooltipTrigger>
                         {isOnlyMethod && (
                           <TooltipContent>
-                            You need another way to sign in before disconnecting
-                            this account.
+                            {t("needAnotherMethod")}
                           </TooltipContent>
                         )}
                       </Tooltip>
@@ -200,7 +198,7 @@ export function AccountSection() {
                         disabled={linking === p.id}
                         onClick={() => void handleLink(p.id)}
                       >
-                        {linking === p.id ? "Connecting…" : "Connect"}
+                        {linking === p.id ? t("connecting") : t("connect")}
                       </Button>
                     )}
                   </li>
@@ -213,13 +211,13 @@ export function AccountSection() {
                   </span>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">
-                      Email and password
+                      {t("emailPassword")}
                     </p>
                     <p className="text-muted-foreground text-xs">
-                      Your password sign-in method
+                      {t("passwordMethod")}
                     </p>
                   </div>
-                  <Badge variant="secondary">Connected</Badge>
+                  <Badge variant="secondary">{t("connected")}</Badge>
                 </li>
               )}
             </ul>
@@ -249,26 +247,26 @@ export function AccountSection() {
             <AlertDialogMedia>
               <TriangleAlertIcon className="text-destructive" />
             </AlertDialogMedia>
-            <AlertDialogTitle>Disconnect this account?</AlertDialogTitle>
+            <AlertDialogTitle>{t("disconnectDialogTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
               {unlinkTarget ? (
                 <>
-                  You&apos;ll no longer be able to sign in with{" "}
-                  <strong>{providerLabel(unlinkTarget.providerId)}</strong>. You
-                  can connect it again at any time.
+                  {t("disconnectDialogDescription")}{" "}
+                  <strong>{providerLabel(unlinkTarget.providerId)}</strong>.{" "}
+                  {t("disconnectDialogReconnect")}
                 </>
               ) : null}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{tc("cancel")}</AlertDialogCancel>
             <Button
               type="button"
               variant="destructive"
               disabled={unlinking}
               onClick={() => void handleUnlink()}
             >
-              {unlinking ? "Disconnecting…" : "Disconnect"}
+              {unlinking ? t("disconnecting") : t("disconnect")}
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>

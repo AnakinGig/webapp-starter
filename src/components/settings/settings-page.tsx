@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import {
   AtSignIcon,
   BellIcon,
+  LanguagesIcon,
   PaletteIcon,
   ShieldIcon,
   UserRoundIcon,
@@ -12,36 +14,55 @@ import {
 import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { LanguageSwitcher } from "@/components/language-switcher";
 import { AccountSection } from "./account-section";
 import { ProfileSection } from "./profile-section";
 import { AppearanceSection } from "./appearance-section";
 import { SecuritySection } from "./security-section";
 import { NotificationsSection } from "./notifications-section";
 
-const SECTIONS = [
-  { id: "profile", label: "Profile", icon: UserRoundIcon },
-  { id: "account", label: "Account", icon: AtSignIcon },
-  { id: "appearance", label: "Appearance", icon: PaletteIcon },
-  { id: "security", label: "Security", icon: ShieldIcon },
-  { id: "notifications", label: "Notifications", icon: BellIcon },
-] as const;
-
-export type SettingsSectionId = (typeof SECTIONS)[number]["id"];
+export type SettingsSectionId =
+  | "profile"
+  | "account"
+  | "appearance"
+  | "language"
+  | "security"
+  | "notifications";
 
 export function SettingsPage() {
+  const t = useTranslations("settings");
   const [active, setActive] = useState<SettingsSectionId>("profile");
   const { data: session } = authClient.useSession();
   const user = session?.user;
   const name = user?.name ?? user?.email ?? "User";
   const initial = name.charAt(0).toUpperCase();
 
+  const sections: {
+    id: SettingsSectionId;
+    label: string;
+    icon: typeof UserRoundIcon;
+  }[] = [
+    { id: "profile", label: t("profile"), icon: UserRoundIcon },
+    { id: "account", label: t("account"), icon: AtSignIcon },
+    { id: "appearance", label: t("appearance"), icon: PaletteIcon },
+    { id: "language", label: t("language"), icon: LanguagesIcon },
+    { id: "security", label: t("security"), icon: ShieldIcon },
+    { id: "notifications", label: t("notifications"), icon: BellIcon },
+  ];
+
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6">
       <div className="mb-8">
-        <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
         <p className="text-muted-foreground text-sm leading-relaxed">
-          Manage your profile, connected accounts, appearance, security and
-          notifications.
+          {t("description")}
         </p>
       </div>
 
@@ -66,10 +87,10 @@ export function SettingsPage() {
             </div>
           </div>
           <nav
-            aria-label="Settings sections"
+            aria-label={t("navLabel")}
             className="flex gap-1 overflow-x-auto pb-1 lg:flex-col lg:overflow-visible lg:pb-0"
           >
-            {SECTIONS.map(({ id, label, icon: Icon }) => (
+            {sections.map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
                 type="button"
@@ -94,6 +115,17 @@ export function SettingsPage() {
           {active === "profile" && <ProfileSection />}
           {active === "account" && <AccountSection />}
           {active === "appearance" && <AppearanceSection />}
+          {active === "language" && (
+            <Card>
+              <CardHeader>
+                <CardTitle>{t("language")}</CardTitle>
+                <CardDescription>{t("languageDescription")}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <LanguageSwitcher />
+              </CardContent>
+            </Card>
+          )}
           {active === "security" && <SecuritySection />}
           {active === "notifications" && <NotificationsSection />}
         </div>

@@ -1,16 +1,19 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 
 import { siteConfig } from "@/lib/site";
 import { Logo } from "@/components/logo";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { NavUser } from "@/components/nav-user";
+import { LanguageSwitcher } from "@/components/language-switcher";
 import { Button } from "@/components/ui/button";
 import { CommandPaletteTrigger } from "@/components/command-palette";
 import { authClient } from "@/lib/auth-client";
 
 export function SiteHeader() {
+  const t = useTranslations("header");
   // Default to the signed-out buttons while the session is loading so the
   // header never shows empty placeholders. The profile menu appears only once
   // the backend confirms there is a session.
@@ -34,6 +37,7 @@ export function SiteHeader() {
         </div>
 
         <div className="flex items-center gap-1.5">
+          <LanguageSwitcher size="sm" />
           <CommandPaletteTrigger />
           <ThemeToggle />
           {session ? (
@@ -46,14 +50,14 @@ export function SiteHeader() {
                 nativeButton={false}
                 render={<Link href="/login" />}
               >
-                Sign in
+                {t("signIn")}
               </Button>
               <Button
                 size="sm"
                 nativeButton={false}
                 render={<Link href="/register" />}
               >
-                Get started
+                {t("getStarted")}
               </Button>
             </div>
           )}

@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { MailCheckIcon, TriangleAlertIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -33,6 +34,8 @@ type FieldErrors = {
 
 export function RegisterForm() {
   const router = useRouter();
+  const t = useTranslations("auth.register");
+  const tc = useTranslations("common");
   const providers = useConfiguredProviders();
   const hasOAuth = (providers?.length ?? 0) > 0;
   const [name, setName] = useState("");
@@ -51,13 +54,13 @@ export function RegisterForm() {
     e.preventDefault();
     const errors: FieldErrors = {};
     if (!name.trim()) {
-      errors.name = "Enter your full name.";
+      errors.name = t("nameRequired");
     }
     if (!isValidEmail(email)) {
-      errors.email = "Enter a valid email address.";
+      errors.email = t("invalidEmail");
     }
     if (!passwordMeetsPolicy(password)) {
-      errors.password = "Password doesn't meet the requirements.";
+      errors.password = t("passwordPolicyError");
     }
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
@@ -75,7 +78,7 @@ export function RegisterForm() {
     });
     setLoading(false);
     if (error) {
-      const message = error.message ?? "Could not create your account.";
+      const message = error.message ?? t("couldNotCreate");
       if (/email|already exists|taken/i.test(message)) {
         setFieldErrors({ email: message });
       } else {
@@ -96,13 +99,10 @@ export function RegisterForm() {
             <MailCheckIcon className="size-6" />
           </span>
           <h2 className="text-lg font-semibold tracking-tight">
-            Check your email
+            {t("checkYourEmail")}
           </h2>
           <p className="text-muted-foreground text-sm leading-relaxed">
-            We sent a verification link to <strong>{createdEmail}</strong>.
-            Click it to confirm your address - you can keep using the app before
-            you verify. Don&apos;t see it? Check your spam folder, or resend
-            from Settings → Security.
+            {t("verificationSent", { email: createdEmail })}
           </p>
         </div>
         <Button
@@ -113,7 +113,7 @@ export function RegisterForm() {
             router.refresh();
           }}
         >
-          Continue to dashboard
+          {t("continueToDashboard")}
         </Button>
       </div>
     );
@@ -125,7 +125,7 @@ export function RegisterForm() {
         {hasOAuth && (
           <>
             <OAuthButtons />
-            <FieldSeparator>or sign up with email</FieldSeparator>
+            <FieldSeparator>{tc("orSignUpWithEmail")}</FieldSeparator>
           </>
         )}
         {formError && (
@@ -135,7 +135,7 @@ export function RegisterForm() {
           </Alert>
         )}
         <Field>
-          <FieldLabel htmlFor="name">Full name</FieldLabel>
+          <FieldLabel htmlFor="name">{tc("fullName")}</FieldLabel>
           <Input
             id="name"
             autoComplete="name"
@@ -151,7 +151,7 @@ export function RegisterForm() {
           {fieldErrors.name && <FieldError>{fieldErrors.name}</FieldError>}
         </Field>
         <Field>
-          <FieldLabel htmlFor="email">Email</FieldLabel>
+          <FieldLabel htmlFor="email">{tc("email")}</FieldLabel>
           <Input
             id="email"
             type="email"
@@ -167,7 +167,7 @@ export function RegisterForm() {
               if (email && !isValidEmail(email)) {
                 setFieldErrors((prev) => ({
                   ...prev,
-                  email: "Enter a valid email address.",
+                  email: t("invalidEmail"),
                 }));
               }
             }}
@@ -177,7 +177,7 @@ export function RegisterForm() {
           {fieldErrors.email && <FieldError>{fieldErrors.email}</FieldError>}
         </Field>
         <Field>
-          <FieldLabel htmlFor="password">Password</FieldLabel>
+          <FieldLabel htmlFor="password">{tc("password")}</FieldLabel>
           <Input
             id="password"
             type="password"
@@ -191,7 +191,7 @@ export function RegisterForm() {
               if (password && !passwordMeetsPolicy(password)) {
                 setFieldErrors((prev) => ({
                   ...prev,
-                  password: "Password doesn't meet the requirements.",
+                  password: t("passwordPolicyError"),
                 }));
               }
             }}
@@ -205,13 +205,12 @@ export function RegisterForm() {
           )}
           {!password && !fieldErrors.password && (
             <FieldDescription>
-              At least {PASSWORD_MIN_LENGTH} characters, with an uppercase
-              letter, a number and a symbol.
+              {t("passwordDescription", { length: PASSWORD_MIN_LENGTH })}
             </FieldDescription>
           )}
         </Field>
         <Button type="submit" className="w-full" disabled={loading}>
-          {loading ? "Creating account..." : "Create account"}
+          {loading ? t("creating") : tc("createAccount")}
         </Button>
       </FieldGroup>
     </form>

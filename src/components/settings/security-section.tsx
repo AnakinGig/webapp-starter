@@ -8,6 +8,7 @@ import {
   type FormEvent,
 } from "react";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 import {
   CheckIcon,
   KeyRoundIcon,
@@ -66,37 +67,6 @@ type ClientSession = {
   expiresAt: string | Date;
 };
 
-function describeDevice(ua?: string | null) {
-  if (!ua) return "Unknown device";
-  const browser = ua.includes("Edg/")
-    ? "Edge"
-    : ua.includes("Chrome/")
-      ? "Chrome"
-      : ua.includes("Firefox/")
-        ? "Firefox"
-        : ua.includes("Safari/")
-          ? "Safari"
-          : "Browser";
-  const os = ua.includes("Windows")
-    ? "Windows"
-    : ua.includes("Mac OS X")
-      ? "macOS"
-      : ua.includes("Android")
-        ? "Android"
-        : ua.includes("iPhone") || ua.includes("iPad")
-          ? "iOS"
-          : ua.includes("Linux")
-            ? "Linux"
-            : "an unknown OS";
-  return `${browser} on ${os}`;
-}
-
-function isMobile(ua?: string | null) {
-  return ua
-    ? ua.includes("Android") || ua.includes("iPhone") || ua.includes("iPad")
-    : false;
-}
-
 /** Hide placeholder/unspecified IPs (e.g. "::" from local dev) and show the rest. */
 function showIp(ip?: string | null) {
   if (
@@ -113,8 +83,41 @@ function showIp(ip?: string | null) {
 
 export function SecuritySection() {
   const router = useRouter();
+  const t = useTranslations("securitySection");
+  const tc = useTranslations("common");
   const { data: session, refetch: refetchSession } = authClient.useSession();
   const currentToken = session?.session?.token;
+
+  function describeDevice(ua?: string | null) {
+    if (!ua) return t("unknownDevice");
+    const browser = ua.includes("Edg/")
+      ? "Edge"
+      : ua.includes("Chrome/")
+        ? "Chrome"
+        : ua.includes("Firefox/")
+          ? "Firefox"
+          : ua.includes("Safari/")
+            ? "Safari"
+            : t("browser");
+    const os = ua.includes("Windows")
+      ? "Windows"
+      : ua.includes("Mac OS X")
+        ? "macOS"
+        : ua.includes("Android")
+          ? "Android"
+          : ua.includes("iPhone") || ua.includes("iPad")
+            ? "iOS"
+            : ua.includes("Linux")
+              ? "Linux"
+              : t("unknownOs");
+    return t("deviceOn", { browser, os });
+  }
+
+  function isMobile(ua?: string | null) {
+    return ua
+      ? ua.includes("Android") || ua.includes("iPhone") || ua.includes("iPad")
+      : false;
+  }
 
   // Email verification state
   const [verifySent, setVerifySent] = useState(false);
@@ -143,9 +146,7 @@ export function SecuritySection() {
       void refetchSession();
     } catch (err) {
       setVerifyError(
-        err instanceof Error
-          ? err.message
-          : "Failed to send the verification email.",
+        err instanceof Error ? err.message : t("verificationSendFailed"),
       );
     } finally {
       setSendingVerify(false);
@@ -200,12 +201,12 @@ export function SecuritySection() {
         setConfirmOpen(true);
         return;
       }
-      toast.error(error.message ?? "Failed to load sessions.");
+      toast.error(error.message ?? t("loadSessionsFailed"));
       return;
     }
     setNeedsReAuth(false);
     setSessions(data ?? []);
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void loadSessions();
@@ -236,7 +237,7 @@ export function SecuritySection() {
       setCurrentVerified(valid);
       setFieldErrors((p) => ({
         ...p,
-        current: valid ? undefined : "Current password is incorrect.",
+        current: valid ? undefined : t("currentPasswordIncorrect"),
       }));
     } catch (e) {
       // Genuine failures (session expired, network) surface as a plain
@@ -247,7 +248,7 @@ export function SecuritySection() {
       setCurrentVerified(false);
       setFieldErrors((p) => ({
         ...p,
-        current: "Current password is incorrect.",
+        current: t("currentPasswordIncorrect"),
       }));
     }
   }
@@ -256,17 +257,17 @@ export function SecuritySection() {
     e.preventDefault();
     const errors: typeof fieldErrors = {};
     if (!currentPassword) {
-      errors.current = "Enter your current password.";
+      errors.current = t("enterCurrentPassword");
     }
     if (!newPassword) {
-      errors.newPassword = "Enter a new password.";
+      errors.newPassword = t("enterNewPassword");
     } else if (!passwordMeetsPolicy(newPassword)) {
-      errors.newPassword = "Password doesn't meet the requirements.";
+      errors.newPassword = t("passwordPolicyError");
     }
     if (!confirmPassword) {
-      errors.confirm = "Confirm your new password.";
+      errors.confirm = t("confirmNewPassword");
     } else if (newPassword !== confirmPassword) {
-      errors.confirm = "Passwords don't match.";
+      errors.confirm = t("passwordsDontMatch");
     }
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
@@ -283,7 +284,7 @@ export function SecuritySection() {
     if (error) {
       // Server rejections here are about the current password - show inline.
       setFieldErrors({
-        current: error.message ?? "Current password is incorrect.",
+        current: error.message ?? t("currentPasswordIncorrect"),
       });
       return;
     }
@@ -294,7 +295,7 @@ export function SecuritySection() {
     currentPasswordRef.current = "";
     setNewPassword("");
     setConfirmPassword("");
-    toast.success("Password updated.");
+    toast.success(t("passwordUpdated"));
   }
 
   async function handleRevoke(token: string) {
@@ -303,11 +304,11 @@ export function SecuritySection() {
     setRevoking(null);
 
     if (error) {
-      toast.error(error.message ?? "Failed to sign out this session.");
+      toast.error(error.message ?? t("revokeFailed"));
       return;
     }
     await loadSessions();
-    toast.success("Session signed out.");
+    toast.success(t("sessionSignedOut"));
   }
 
   async function handleRevokeOthers() {
@@ -316,11 +317,11 @@ export function SecuritySection() {
     setRevokingOthers(false);
 
     if (error) {
-      toast.error(error.message ?? "Failed to sign out other sessions.");
+      toast.error(error.message ?? t("revokeOthersFailed"));
       return;
     }
     await loadSessions();
-    toast.success("Signed out of all other sessions.");
+    toast.success(t("signedOutOthers"));
   }
 
   /** Verify the password as soon as the user leaves the field (fast UX). */
@@ -343,7 +344,7 @@ export function SecuritySection() {
           res.ok && (body.valid === true || body.data?.valid === true),
         );
         if (!res.ok) {
-          setConfirmError("That password isn't correct.");
+          setConfirmError(t("passwordIncorrect"));
         }
       } catch {
         // Network/session hiccup - leave the field unverified, the submit flow
@@ -371,7 +372,7 @@ export function SecuritySection() {
     }
     if (confirming) return;
     if (!accessPassword) {
-      setConfirmError("Enter your password to continue.");
+      setConfirmError(t("enterPasswordToContinue"));
       return;
     }
     setConfirming(true);
@@ -387,9 +388,7 @@ export function SecuritySection() {
         message?: string;
       };
       if (!res.ok || body.status !== true) {
-        setConfirmError(
-          body.message ?? "Couldn't confirm your access. Try again.",
-        );
+        setConfirmError(body.message ?? t("confirmFailed"));
         return;
       }
       // Fresh window granted - reload the sessions in place.
@@ -399,7 +398,7 @@ export function SecuritySection() {
       setNeedsReAuth(false);
       await loadSessions();
     } catch {
-      setConfirmError("Couldn't reach the server. Try again.");
+      setConfirmError(t("serverUnreachable"));
     } finally {
       setConfirming(false);
     }
@@ -427,10 +426,8 @@ export function SecuritySection() {
     <div className="flex flex-col gap-6">
       <Card>
         <CardHeader>
-          <CardTitle>Email verification</CardTitle>
-          <CardDescription>
-            Confirm that you own this email address.
-          </CardDescription>
+          <CardTitle>{t("emailVerificationTitle")}</CardTitle>
+          <CardDescription>{t("emailVerificationDescription")}</CardDescription>
         </CardHeader>
         <CardContent className="pb-(--card-spacing)">
           <div className="border-border flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
@@ -440,20 +437,18 @@ export function SecuritySection() {
                   {session?.user?.email}
                 </p>
                 {isVerified ? (
-                  <Badge>Verified</Badge>
+                  <Badge>{t("verified")}</Badge>
                 ) : (
-                  <Badge variant="secondary">Not verified</Badge>
+                  <Badge variant="secondary">{t("notVerified")}</Badge>
                 )}
               </div>
               <p className="text-muted-foreground mt-1 text-sm">
-                {isVerified
-                  ? "Your email address is confirmed."
-                  : "We'll send a verification link to this address. Links expire after one hour."}
+                {isVerified ? t("emailConfirmed") : t("verificationLinkHint")}
               </p>
               {verifySent && !isVerified && (
                 <p className="text-muted-foreground mt-3 flex items-center gap-1.5 text-sm">
                   <CheckIcon className="size-3.5" />
-                  Verification email sent - check your inbox.
+                  {t("verificationSent")}
                 </p>
               )}
               {verifyError && (
@@ -471,10 +466,10 @@ export function SecuritySection() {
                 onClick={() => void handleSendVerification()}
               >
                 {sendingVerify
-                  ? "Sending…"
+                  ? t("sending")
                   : cooldown > 0
-                    ? `Resend in ${cooldown}s`
-                    : "Send verification email"}
+                    ? t("resendIn", { count: cooldown })
+                    : t("sendVerificationEmail")}
               </Button>
             )}
           </div>
@@ -483,17 +478,15 @@ export function SecuritySection() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Change password</CardTitle>
-          <CardDescription>
-            Use a strong password you don&apos;t use anywhere else.
-          </CardDescription>
+          <CardTitle>{t("changePasswordTitle")}</CardTitle>
+          <CardDescription>{t("changePasswordDescription")}</CardDescription>
         </CardHeader>
         <form onSubmit={handlePasswordChange} noValidate>
           <CardContent className="pb-(--card-spacing)">
             <FieldGroup>
               <Field>
                 <FieldLabel htmlFor="settings-current-password">
-                  Current password
+                  {t("currentPassword")}
                 </FieldLabel>
                 <Input
                   id="settings-current-password"
@@ -516,12 +509,12 @@ export function SecuritySection() {
                 {checkingCurrent && !fieldErrors.current ? (
                   <p className="text-muted-foreground flex items-center gap-1.5 text-xs">
                     <Spinner className="size-3" aria-hidden="true" />
-                    Checking password…
+                    {t("checkingPassword")}
                   </p>
                 ) : currentVerified && !fieldErrors.current ? (
                   <p className="text-muted-foreground flex items-center gap-1.5 text-xs">
                     <CheckIcon className="size-3" />
-                    Password verified
+                    {t("passwordVerified")}
                   </p>
                 ) : fieldErrors.current ? (
                   <FieldError>{fieldErrors.current}</FieldError>
@@ -529,7 +522,7 @@ export function SecuritySection() {
               </Field>
               <Field>
                 <FieldLabel htmlFor="settings-new-password">
-                  New password
+                  {t("newPassword")}
                 </FieldLabel>
                 <Input
                   id="settings-new-password"
@@ -545,7 +538,7 @@ export function SecuritySection() {
                     if (newPassword && !passwordMeetsPolicy(newPassword)) {
                       setFieldErrors((p) => ({
                         ...p,
-                        newPassword: "Password doesn't meet the requirements.",
+                        newPassword: t("passwordPolicyError"),
                       }));
                     }
                   }}
@@ -562,14 +555,15 @@ export function SecuritySection() {
                 )}
                 {!newPassword && !fieldErrors.newPassword && (
                   <FieldDescription>
-                    At least {PASSWORD_MIN_LENGTH} characters, with an uppercase
-                    letter, a number and a symbol.
+                    {t("passwordDescription", {
+                      length: PASSWORD_MIN_LENGTH,
+                    })}
                   </FieldDescription>
                 )}
               </Field>
               <Field>
                 <FieldLabel htmlFor="settings-confirm-password">
-                  Confirm new password
+                  {t("confirmNewPassword")}
                 </FieldLabel>
                 <Input
                   id="settings-confirm-password"
@@ -589,7 +583,7 @@ export function SecuritySection() {
                     ) {
                       setFieldErrors((p) => ({
                         ...p,
-                        confirm: "Passwords don't match.",
+                        confirm: t("passwordsDontMatch"),
                       }));
                     }
                   }}
@@ -616,14 +610,12 @@ export function SecuritySection() {
                   }
                 >
                   <KeyRoundIcon data-icon="inline-start" />
-                  {changingPassword ? "Updating…" : "Update password"}
+                  {changingPassword ? t("updating") : t("updatePassword")}
                 </Button>
               </TooltipTrigger>
               {!changingPassword &&
                 (!currentPassword || !newPassword || !confirmPassword) && (
-                  <TooltipContent>
-                    Fill in all three fields to update your password.
-                  </TooltipContent>
+                  <TooltipContent>{t("fillAllFields")}</TooltipContent>
                 )}
             </Tooltip>
           </CardFooter>
@@ -634,18 +626,14 @@ export function SecuritySection() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Sessions</CardTitle>
-          <CardDescription>
-            Devices that are currently signed in to your account.
-          </CardDescription>
+          <CardTitle>{t("sessionsTitle")}</CardTitle>
+          <CardDescription>{t("sessionsDescription")}</CardDescription>
         </CardHeader>
         <CardContent className="p-0">
           {needsReAuth ? (
             <div className="flex flex-col gap-3 px-4 py-6 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-muted-foreground max-w-md text-sm">
-                For security, sensitive actions require a session that is less
-                than 24 hours old. Confirm your password to view and manage your
-                sessions.
+                {t("reAuthHint")}
               </p>
               <Button
                 type="button"
@@ -653,7 +641,7 @@ export function SecuritySection() {
                 className="shrink-0"
                 onClick={() => setConfirmOpen(true)}
               >
-                Confirm access
+                {t("confirmAccess")}
               </Button>
             </div>
           ) : loadingSessions ? (
@@ -664,7 +652,7 @@ export function SecuritySection() {
             </div>
           ) : sessions.length === 0 ? (
             <p className="text-muted-foreground px-4 py-6 text-sm">
-              No active sessions found.
+              {t("noSessions")}
             </p>
           ) : (
             <ul className="divide-border divide-y">
@@ -686,11 +674,11 @@ export function SecuritySection() {
                         <p className="truncate text-sm font-medium">
                           {describeDevice(s.userAgent)}
                         </p>
-                        {isCurrent && <Badge>This device</Badge>}
+                        {isCurrent && <Badge>{t("thisDevice")}</Badge>}
                       </div>
                       <p className="text-muted-foreground text-xs">
                         {showIp(s.ipAddress)}
-                        Signed in {formatDate(s.createdAt)}
+                        {t("signedInOn", { date: formatDate(s.createdAt) })}
                       </p>
                     </div>
                     {!isCurrent && (
@@ -701,7 +689,7 @@ export function SecuritySection() {
                         disabled={revoking === s.token}
                         onClick={() => void handleRevoke(s.token)}
                       >
-                        {revoking === s.token ? "Signing out…" : "Sign out"}
+                        {revoking === s.token ? t("signingOut") : tc("signOut")}
                       </Button>
                     )}
                   </li>
@@ -713,7 +701,7 @@ export function SecuritySection() {
         {needsReAuth ? null : (
           <CardFooter className="border-border justify-between border-t">
             <p className="text-muted-foreground text-xs">
-              You can sign out of any device signed in to your account.
+              {t("signOutAnyDevice")}
             </p>
             <Tooltip>
               <TooltipTrigger render={<span className="inline-flex" />}>
@@ -724,15 +712,11 @@ export function SecuritySection() {
                   disabled={revokingOthers || sessions.length <= 1}
                   onClick={() => void handleRevokeOthers()}
                 >
-                  {revokingOthers
-                    ? "Signing out…"
-                    : "Sign out of all other sessions"}
+                  {revokingOthers ? t("signingOut") : t("signOutOthers")}
                 </Button>
               </TooltipTrigger>
               {!revokingOthers && sessions.length <= 1 && (
-                <TooltipContent>
-                  You have no other active sessions.
-                </TooltipContent>
+                <TooltipContent>{t("noOtherSessions")}</TooltipContent>
               )}
             </Tooltip>
           </CardFooter>
@@ -752,16 +736,15 @@ export function SecuritySection() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Confirm access</DialogTitle>
+            <DialogTitle>{t("confirmAccessTitle")}</DialogTitle>
             <DialogDescription>
-              For security, enter your password to continue. You won&apos;t be
-              signed out - this unlocks sensitive actions for another 24 hours.
+              {t("confirmAccessDescription")}
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleConfirmAccess} noValidate>
             <Field>
               <FieldLabel htmlFor="confirm-access-password">
-                Password
+                {tc("password")}
               </FieldLabel>
               <Input
                 id="confirm-access-password"
@@ -781,12 +764,12 @@ export function SecuritySection() {
               {confirming && !confirmError ? (
                 <p className="text-muted-foreground flex items-center gap-1.5 text-xs">
                   <Spinner className="size-3" aria-hidden="true" />
-                  Checking…
+                  {t("checking")}
                 </p>
               ) : confirmVerified && !confirmError ? (
                 <p className="text-muted-foreground flex items-center gap-1.5 text-xs">
                   <CheckIcon className="size-3" />
-                  Password verified
+                  {t("passwordVerified")}
                 </p>
               ) : confirmError ? (
                 <FieldError>{confirmError}</FieldError>
@@ -799,10 +782,10 @@ export function SecuritySection() {
                 disabled={confirming}
                 onClick={() => setConfirmOpen(false)}
               >
-                Cancel
+                {tc("cancel")}
               </Button>
               <Button type="submit" disabled={confirming}>
-                {confirming ? "Confirming…" : "Confirm"}
+                {confirming ? t("confirming") : t("confirm")}
               </Button>
             </DialogFooter>
           </form>
@@ -812,9 +795,7 @@ export function SecuritySection() {
             disabled={reAuthenticating}
             onClick={() => void handleReAuth()}
           >
-            {reAuthenticating
-              ? "Signing out…"
-              : "Can't confirm? Sign out and sign in again"}
+            {reAuthenticating ? t("signingOut") : t("cantConfirm")}
           </button>
         </DialogContent>
       </Dialog>

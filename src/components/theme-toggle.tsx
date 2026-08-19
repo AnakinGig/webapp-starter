@@ -1,27 +1,29 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { useTheme } from "next-themes"
-import { MoonIcon, SunIcon } from "lucide-react"
+import * as React from "react";
+import { useTheme } from "next-themes";
+import { useTranslations } from "next-intl";
+import { MoonIcon, SunIcon } from "lucide-react";
 
-import { Button } from "@/components/ui/button"
+import { Button } from "@/components/ui/button";
 
 export function ThemeToggle() {
-  const { resolvedTheme, setTheme } = useTheme()
-  const [mounted, setMounted] = React.useState(false)
+  const { resolvedTheme, setTheme } = useTheme();
+  const t = useTranslations("header");
+  const [mounted, setMounted] = React.useState(false);
 
-  React.useEffect(() => setMounted(true), [])
+  React.useEffect(() => setMounted(true), []);
 
-  const isDark = resolvedTheme === "dark"
+  const isDark = resolvedTheme === "dark";
 
   return (
     <Button
       variant="ghost"
       size="icon-sm"
-      aria-label="Toggle color theme"
+      aria-label={t("toggleColorTheme")}
       onClick={() => setTheme(isDark ? "light" : "dark")}
     >
       {mounted && isDark ? <SunIcon /> : <MoonIcon />}
     </Button>
-  )
+  );
 }

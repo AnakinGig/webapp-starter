@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 
 import { authClient } from "@/lib/auth-client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -19,6 +20,8 @@ import { CircleUserRound, LogOut, Settings } from "lucide-react";
 
 export function NavUser() {
   const router = useRouter();
+  const t = useTranslations("navUser");
+  const th = useTranslations("header");
   const { data: session } = authClient.useSession();
   const user = session?.user;
   const isAdmin = user?.role === "admin";
@@ -33,7 +36,7 @@ export function NavUser() {
           <Button
             variant="ghost"
             size="icon"
-            aria-label={`Open menu for ${name}`}
+            aria-label={th("openMenuFor", { name })}
             className="data-[state=open]:bg-accent data-[state=open]:text-accent-foreground"
           >
             <Avatar className="size-8 rounded-lg">
@@ -79,12 +82,12 @@ export function NavUser() {
           {isAdmin && (
             <DropdownMenuItem render={<Link href="/dashboard" />}>
               <CircleUserRound className="size-4" />
-              Dashboard
+              {t("dashboard")}
             </DropdownMenuItem>
           )}
           <DropdownMenuItem render={<Link href="/settings" />}>
             <Settings className="size-4" />
-            Settings
+            {t("settings")}
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
@@ -107,7 +110,7 @@ export function NavUser() {
           }}
         >
           <LogOut className="size-4" />
-          Sign out
+          {t("signOut")}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

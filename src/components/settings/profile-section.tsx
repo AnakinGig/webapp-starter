@@ -3,6 +3,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 import { TriangleAlertIcon } from "lucide-react";
 
 import { authClient } from "@/lib/auth-client";
@@ -50,6 +51,8 @@ import { isValidEmail } from "@/lib/validation";
 
 export function ProfileSection() {
   const router = useRouter();
+  const t = useTranslations("profileSection");
+  const tc = useTranslations("common");
   const { data: session, refetch: refetchSession } = authClient.useSession();
   const user = session?.user;
 
@@ -112,9 +115,9 @@ export function ProfileSection() {
   function validateNewEmail(): string | null {
     const trimmed = newEmail.trim();
     if (!trimmed) return null;
-    if (!isValidEmail(trimmed)) return "Enter a valid email address.";
+    if (!isValidEmail(trimmed)) return t("invalidEmail");
     if (trimmed.toLowerCase() === (user?.email ?? "").toLowerCase()) {
-      return "This is already your current email address.";
+      return t("emailAlreadyCurrent");
     }
     return null;
   }
@@ -133,9 +136,7 @@ export function ProfileSection() {
       setVerifyCooldown(60);
     } catch (err) {
       setVerifyError(
-        err instanceof Error
-          ? err.message
-          : "Failed to send the verification email.",
+        err instanceof Error ? err.message : t("verificationSendFailed"),
       );
     } finally {
       setSendingVerify(false);
@@ -145,7 +146,7 @@ export function ProfileSection() {
   async function handleEmailChange() {
     const trimmed = newEmail.trim();
     if (!trimmed) {
-      setEmailError("Enter your new email address.");
+      setEmailError(t("enterNewEmail"));
       return;
     }
     const frontError = validateNewEmail();
@@ -164,7 +165,7 @@ export function ProfileSection() {
     setSendingEmail(false);
 
     if (error) {
-      setEmailError(error.message ?? "Couldn't send the confirmation email.");
+      setEmailError(error.message ?? t("confirmationSendFailed"));
       return;
     }
     setNewEmail("");
@@ -181,12 +182,12 @@ export function ProfileSection() {
     setSaving(false);
 
     if (error) {
-      setNameError(error.message ?? "Failed to update profile.");
+      setNameError(error.message ?? t("profileUpdateFailed"));
       return;
     }
     setNameError(null);
     await refetchSession();
-    toast.success("Profile updated.");
+    toast.success(t("profileUpdated"));
   }
 
   async function handleExport() {
@@ -195,7 +196,7 @@ export function ProfileSection() {
     setExporting(true);
     try {
       const data = await convex.query(api.users.exportData);
-      if (!data) throw new Error("No data returned.");
+      if (!data) throw new Error(t("noDataReturned"));
 
       const blob = new Blob([JSON.stringify(data, null, 2)], {
         type: "application/json",
@@ -211,7 +212,7 @@ export function ProfileSection() {
       // in Firefox.
       setTimeout(() => URL.revokeObjectURL(url), 0);
     } catch (e) {
-      setExportError(e instanceof Error ? e.message : "Export failed.");
+      setExportError(e instanceof Error ? e.message : t("exportFailed"));
     } finally {
       setExporting(false);
     }
@@ -225,11 +226,11 @@ export function ProfileSection() {
     // password before deleting.
     if (hasPassword !== false) {
       if (!confirmPassword) {
-        setDeleteError("Enter your password to confirm.");
+        setDeleteError(t("enterPasswordToConfirm"));
         return;
       }
     } else if (!confirmChecked) {
-      setDeleteError("Confirm that you understand this is permanent.");
+      setDeleteError(t("confirmPermanent"));
       return;
     }
 
@@ -242,9 +243,7 @@ export function ProfileSection() {
       await authClient.signOut();
       router.push("/");
     } catch (err) {
-      setDeleteError(
-        err instanceof Error ? err.message : "Could not delete your account.",
-      );
+      setDeleteError(err instanceof Error ? err.message : t("deleteFailed"));
     } finally {
       setDeletingAccount(false);
     }
@@ -254,10 +253,8 @@ export function ProfileSection() {
     <>
       <Card>
         <CardHeader>
-          <CardTitle>Public profile</CardTitle>
-          <CardDescription>
-            This information is displayed across your workspace.
-          </CardDescription>
+          <CardTitle>{t("title")}</CardTitle>
+          <CardDescription>{t("description")}</CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="pb-(--card-spacing)">
@@ -265,7 +262,7 @@ export function ProfileSection() {
               <div className="flex flex-wrap items-start gap-4">
                 <AvatarUploader
                   image={user?.image}
-                  name={user?.name ?? user?.email ?? "User"}
+                  name={user?.name ?? user?.email ?? tc("user")}
                   onAvatarChanged={() => refetchSession()}
                 />
                 <div className="flex min-w-0 flex-col gap-1 pt-1">
@@ -279,7 +276,9 @@ export function ProfileSection() {
               </div>
 
               <Field>
-                <FieldLabel htmlFor="settings-name">Full name</FieldLabel>
+                <FieldLabel htmlFor="settings-name">
+                  {tc("fullName")}
+                </FieldLabel>
                 <Input
                   id="settings-name"
                   value={name}
@@ -287,7 +286,7 @@ export function ProfileSection() {
                     setName(e.target.value);
                     setNameError(null);
                   }}
-                  placeholder="Your name"
+                  placeholder={t("namePlaceholder")}
                   autoComplete="name"
                   aria-invalid={Boolean(nameError)}
                 />
@@ -295,7 +294,9 @@ export function ProfileSection() {
               </Field>
 
               <Field>
-                <FieldLabel htmlFor="settings-new-email">Email</FieldLabel>
+                <FieldLabel htmlFor="settings-new-email">
+                  {tc("email")}
+                </FieldLabel>
                 {isVerified ? (
                   <>
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
@@ -325,21 +326,17 @@ export function ProfileSection() {
                         disabled={sendingEmail}
                         onClick={() => void handleEmailChange()}
                       >
-                        {sendingEmail ? "Sending…" : "Change email"}
+                        {sendingEmail ? t("sending") : t("changeEmail")}
                       </Button>
                     </div>
-                    <FieldDescription>
-                      We&apos;ll email a verification link to the new address.
-                      Your email only changes after you verify it.
-                    </FieldDescription>
+                    <FieldDescription>{t("emailChangeHint")}</FieldDescription>
                     {emailError && <FieldError>{emailError}</FieldError>}
                     {emailSent && (
                       <p
                         role="status"
                         className="text-sm font-normal text-emerald-600 dark:text-emerald-500"
                       >
-                        If this email isn&apos;t already in use, a verification
-                        link is on its way - follow it to finish the change.
+                        {t("emailSentStatus")}
                       </p>
                     )}
                   </>
@@ -351,8 +348,7 @@ export function ProfileSection() {
                           {user?.email ?? "-"}
                         </p>
                         <p className="text-muted-foreground mt-1 text-sm">
-                          Verify your current email before changing it. A
-                          verification link will be sent to this address.
+                          {t("verifyBeforeChange")}
                         </p>
                         {verifyError && (
                           <p
@@ -367,7 +363,7 @@ export function ProfileSection() {
                             role="status"
                             className="mt-2 text-sm text-emerald-600 dark:text-emerald-500"
                           >
-                            Verification link sent - check your inbox.
+                            {t("verificationSent")}
                           </p>
                         )}
                       </div>
@@ -379,10 +375,10 @@ export function ProfileSection() {
                         onClick={() => void handleSendVerification()}
                       >
                         {sendingVerify
-                          ? "Sending…"
+                          ? t("sending")
                           : verifyCooldown > 0
-                            ? `Resend in ${verifyCooldown}s`
-                            : "Send verification email"}
+                            ? t("resendIn", { count: verifyCooldown })
+                            : t("sendVerificationEmail")}
                       </Button>
                     </div>
                   </>
@@ -393,13 +389,15 @@ export function ProfileSection() {
 
               <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
                 <div className="flex items-center gap-2">
-                  <span className="text-muted-foreground">Role</span>
+                  <span className="text-muted-foreground">{t("role")}</span>
                   <Badge variant={isAdmin ? "default" : "secondary"}>
                     {user?.role ?? "user"}
                   </Badge>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-muted-foreground">Member since</span>
+                  <span className="text-muted-foreground">
+                    {t("memberSince")}
+                  </span>
                   <span className="tabular-nums">
                     {formatDate(user?.createdAt)}
                   </span>
@@ -411,11 +409,11 @@ export function ProfileSection() {
             <Tooltip>
               <TooltipTrigger render={<span className="inline-flex" />}>
                 <Button type="submit" disabled={saving || isUnchanged}>
-                  {saving ? "Saving…" : "Update profile"}
+                  {saving ? t("saving") : t("updateProfile")}
                 </Button>
               </TooltipTrigger>
               {!saving && isUnchanged && (
-                <TooltipContent>No changes to save.</TooltipContent>
+                <TooltipContent>{t("noChanges")}</TooltipContent>
               )}
             </Tooltip>
           </CardFooter>
@@ -424,18 +422,15 @@ export function ProfileSection() {
 
       <Card className="mt-6">
         <CardHeader>
-          <CardTitle>Account data</CardTitle>
-          <CardDescription>
-            Download everything this app stores about your account.
-          </CardDescription>
+          <CardTitle>{t("accountDataTitle")}</CardTitle>
+          <CardDescription>{t("accountDataDescription")}</CardDescription>
         </CardHeader>
         <CardContent className="pb-(--card-spacing)">
           <div className="border-border flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
             <div className="min-w-0">
-              <p className="text-sm font-medium">Export your data</p>
+              <p className="text-sm font-medium">{t("exportYourData")}</p>
               <p className="text-muted-foreground mt-1 text-sm">
-                Your profile, sessions, connected accounts, and content as a
-                JSON file. Credentials (tokens, passwords) are never included.
+                {t("exportDescription")}
               </p>
             </div>
             <Button
@@ -445,7 +440,7 @@ export function ProfileSection() {
               disabled={exporting}
               onClick={() => void handleExport()}
             >
-              {exporting ? "Preparing…" : "Export JSON"}
+              {exporting ? t("preparing") : t("exportJson")}
             </Button>
           </div>
           {exportError && (
@@ -458,18 +453,15 @@ export function ProfileSection() {
 
       <Card className="border-destructive/50 mt-6">
         <CardHeader>
-          <CardTitle className="text-destructive">Danger zone</CardTitle>
-          <CardDescription>
-            Irreversible actions that affect your account.
-          </CardDescription>
+          <CardTitle className="text-destructive">{t("dangerZone")}</CardTitle>
+          <CardDescription>{t("dangerZoneDescription")}</CardDescription>
         </CardHeader>
         <CardContent className="pb-(--card-spacing)">
           <div className="border-destructive/50 flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
             <div className="min-w-0">
-              <p className="text-sm font-medium">Delete account</p>
+              <p className="text-sm font-medium">{t("deleteAccount")}</p>
               <p className="text-muted-foreground mt-1 text-sm">
-                Permanently delete your account, your sessions, and your
-                content. This action cannot be undone.
+                {t("deleteAccountDescription")}
               </p>
             </div>
             <Button
@@ -482,7 +474,7 @@ export function ProfileSection() {
                 setDeleteError(null);
               }}
             >
-              Delete account
+              {t("deleteAccount")}
             </Button>
           </div>
         </CardContent>
@@ -494,10 +486,9 @@ export function ProfileSection() {
             <AlertDialogMedia>
               <TriangleAlertIcon className="text-destructive" />
             </AlertDialogMedia>
-            <AlertDialogTitle>Delete your account?</AlertDialogTitle>
+            <AlertDialogTitle>{t("deleteDialogTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete your account, all active sessions,
-              and any content you&apos;ve created. This action cannot be undone.
+              {t("deleteDialogDescription")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <form onSubmit={handleDelete} noValidate>
@@ -510,13 +501,11 @@ export function ProfileSection() {
                       setConfirmChecked(checked === true);
                       setDeleteError(null);
                     }}
-                    aria-label="I understand this action is permanent"
+                    aria-label={t("understandPermanent")}
                     className="mt-0.5"
                   />
                   <span className="text-muted-foreground">
-                    I understand this permanently deletes my account, all active
-                    sessions, and any content I&apos;ve created. This cannot be
-                    undone.
+                    {t("understandPermanentLong")}
                   </span>
                 </label>
                 {deleteError && <FieldError>{deleteError}</FieldError>}
@@ -524,7 +513,7 @@ export function ProfileSection() {
             ) : (
               <Field className="pb-4">
                 <FieldLabel htmlFor="confirm-delete-password">
-                  Enter your password to confirm
+                  {t("enterPasswordToConfirm")}
                 </FieldLabel>
                 <Input
                   id="confirm-delete-password"
@@ -534,7 +523,7 @@ export function ProfileSection() {
                     setConfirmPassword(e.target.value);
                     setDeleteError(null);
                   }}
-                  placeholder="Your password"
+                  placeholder={t("passwordPlaceholder")}
                   autoComplete="current-password"
                   aria-invalid={Boolean(deleteError)}
                 />
@@ -542,7 +531,7 @@ export function ProfileSection() {
               </Field>
             )}
             <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogCancel>{tc("cancel")}</AlertDialogCancel>
               <Button
                 type="submit"
                 variant="destructive"
@@ -551,7 +540,7 @@ export function ProfileSection() {
                   (hasPassword !== false ? !confirmPassword : !confirmChecked)
                 }
               >
-                {deletingAccount ? "Deleting…" : "Delete my account"}
+                {deletingAccount ? t("deleting") : t("deleteMyAccount")}
               </Button>
             </AlertDialogFooter>
           </form>

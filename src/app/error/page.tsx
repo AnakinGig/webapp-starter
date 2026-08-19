@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import { TriangleAlertIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -19,70 +20,61 @@ export const metadata: Metadata = {
  * OAuth failure landing page. better-auth redirects failed callbacks (email
  * mismatch, access denied, cancelled flow, ...) to `/error?error=...`.
  * Map the known codes to plain-language messages and always give a way back.
+ * Keys are the better-auth error codes; values are message keys in the
+ * `errorPage` namespace (each code keeps its own title + message pair).
  */
-const ERROR_MESSAGES: Record<string, { title: string; message: string }> = {
+const ERROR_KEYS: Record<string, { title: string; message: string }> = {
   "email_doesn't_match": {
-    title: "Email doesn't match",
-    message:
-      "The account you tried to connect uses a different email address than this account. Connect with a provider that uses the same email.",
+    title: "emailMismatch",
+    message: "emailMismatchMsg",
   },
   account_already_linked_to_different_user: {
-    title: "Account already in use",
-    message:
-      "This provider account is already connected to a different user. Sign out and connect it with that account instead.",
+    title: "accountInUse",
+    message: "accountInUseMsg",
   },
   unable_to_link_account: {
-    title: "Couldn't connect account",
-    message:
-      "The provider account couldn't be connected right now. Please try again.",
+    title: "couldNotConnect",
+    message: "couldNotConnectMsg",
   },
   email_not_found: {
-    title: "No email from provider",
-    message:
-      "The provider didn't return an email address, so the account can't be connected or created. Try another provider.",
+    title: "noEmail",
+    message: "noEmailMsg",
   },
   access_denied: {
-    title: "Access denied",
-    message:
-      "You chose not to authorize the sign-in. You can try again whenever you're ready.",
+    title: "accessDenied",
+    message: "accessDeniedMsg",
   },
   no_code: {
-    title: "Sign-in couldn't be completed",
-    message:
-      "The provider didn't return an authorization code. Please try again.",
+    title: "signInIncomplete",
+    message: "noCodeMsg",
   },
   invalid_code: {
-    title: "Sign-in couldn't be completed",
-    message:
-      "The provider returned an invalid authorization code. Please try again.",
+    title: "signInIncomplete",
+    message: "invalidCodeMsg",
   },
   invalid_callback_request: {
-    title: "Invalid sign-in link",
-    message:
-      "The sign-in link is invalid or was opened twice. Please try again.",
+    title: "invalidLink",
+    message: "invalidCallbackMsg",
   },
   no_callback_url: {
-    title: "Invalid sign-in link",
-    message:
-      "The sign-in link is missing a callback. Please try again from the start.",
+    title: "invalidLink",
+    message: "noCallbackUrlMsg",
   },
   oauth_provider_not_found: {
-    title: "Provider unavailable",
-    message:
-      "This sign-in provider isn't configured on this app. Choose another method.",
+    title: "providerUnavailable",
+    message: "providerNotFoundMsg",
   },
   unable_to_get_user_info: {
-    title: "Provider error",
-    message: "The provider couldn't return your profile. Please try again.",
+    title: "providerError",
+    message: "providerErrorMsg",
   },
   server_error: {
-    title: "Something went wrong",
-    message: "An unexpected error occurred. Please try again in a moment.",
+    title: "somethingWentWrong",
+    message: "serverErrorMsg",
   },
   temporarily_unavailable: {
-    title: "Temporarily unavailable",
-    message:
-      "The sign-in service is temporarily unavailable. Please try again soon.",
+    title: "temporarilyUnavailable",
+    message: "temporarilyUnavailableMsg",
   },
 };
 
@@ -91,15 +83,17 @@ export default async function ErrorPage({
 }: {
   searchParams: Promise<{ error?: string; error_description?: string }>;
 }) {
+  const t = await getTranslations("errorPage");
   const { error, error_description } = await searchParams;
-  const info = ERROR_MESSAGES[error ?? ""] ?? {
-    title: error_description
-      ? "Sign-in couldn't be completed"
-      : "Something went wrong",
-    message:
-      error_description ??
-      "An unexpected error occurred. Please try again or go back.",
-  };
+  const keys = ERROR_KEYS[error ?? ""];
+  const title = keys?.title
+    ? t(keys.title)
+    : error_description
+      ? t("signInIncomplete")
+      : t("somethingWentWrong");
+  const message = keys?.message
+    ? t(keys.message)
+    : (error_description ?? t("genericMsg"));
 
   return (
     <div className="flex min-h-svh items-center justify-center px-4 py-12">
@@ -108,22 +102,22 @@ export default async function ErrorPage({
           <div className="bg-destructive/10 text-destructive mb-4 flex size-12 items-center justify-center rounded-full">
             <TriangleAlertIcon className="size-6" aria-hidden="true" />
           </div>
-          <CardTitle>{info.title}</CardTitle>
+          <CardTitle>{title}</CardTitle>
           <CardDescription className="leading-relaxed">
-            {info.message}
+            {message}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col gap-2">
             <Button nativeButton={false} render={<Link href="/" />}>
-              Back to home
+              {t("backToHome")}
             </Button>
             <Button
               variant="outline"
               nativeButton={false}
               render={<Link href="/login" />}
             >
-              Go to sign in
+              {t("goToSignIn")}
             </Button>
           </div>
         </CardContent>

@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { getLocale } from "next-intl/server";
+import { NextIntlClientProvider } from "next-intl";
 import "@/styles/globals.css";
 
 import { appSettings } from "@/lib/app";
@@ -51,10 +53,11 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const token = await getToken();
+  const locale = await getLocale();
 
   return (
     <html
-      lang="en"
+      lang={locale}
       className={`${geistSans.variable} ${geistMono.variable} bg-background`}
       suppressHydrationWarning
     >
@@ -65,13 +68,15 @@ export default async function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <CommandPaletteProvider>
-            <ConvexClientProvider initialToken={token}>
-              {children}
-            </ConvexClientProvider>
-            <Toaster position="top-center" />
-            <CookieConsent />
-          </CommandPaletteProvider>
+          <NextIntlClientProvider>
+            <CommandPaletteProvider>
+              <ConvexClientProvider initialToken={token}>
+                {children}
+              </ConvexClientProvider>
+              <Toaster position="top-center" />
+              <CookieConsent />
+            </CommandPaletteProvider>
+          </NextIntlClientProvider>
         </ThemeProvider>
       </body>
     </html>

@@ -1,28 +1,37 @@
-import Link from "next/link"
-import type { Metadata } from "next"
-import { AuthShell } from "@/components/auth-shell"
-import { RegisterForm } from "@/components/register-form"
+import Link from "next/link";
+import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 
-export const metadata: Metadata = {
-  title: "Create account",
+import { AuthShell } from "@/components/auth-shell";
+import { RegisterForm } from "@/components/register-form";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("auth.register");
+  return { title: t("title") };
 }
 
-export default function RegisterPage() {
+export default async function RegisterPage() {
+  const t = await getTranslations("auth.register");
+  const tc = await getTranslations("common");
+
   return (
     <AuthShell
       eyebrow="/register"
-      title="Create your account"
-      description="Set up an account in seconds. No credit card required for the starter."
+      title={t("title")}
+      description={t("description")}
       footer={
         <>
-          {"Already have an account? "}
-          <Link href="/login" className="font-medium text-foreground underline-offset-4 hover:underline">
-            Sign in
+          {t("haveAccount")}
+          <Link
+            href="/login"
+            className="text-foreground font-medium underline-offset-4 hover:underline"
+          >
+            {tc("signIn")}
           </Link>
         </>
       }
     >
       <RegisterForm />
     </AuthShell>
-  )
+  );
 }

@@ -25,8 +25,8 @@
 
 **Purpose**: Project initialization and i18n prerequisites
 
-- [ ] T001 Install next-intl as a dependency (`pnpm add next-intl`) and verify `next.config.ts` still builds
-- [ ] T002 Create `messages/en.json` and `messages/fr.json` with an empty namespace structure (common + per-page sections)
+- [x] T001 Install next-intl as a dependency (`pnpm add next-intl`) and verify `next.config.ts` still builds
+- [x] T002 Create `messages/en.json` and `messages/fr.json` with an empty namespace structure (common + per-page sections)
 - [ ] T003 [P] Install vitest toolchain as dev dependencies (`pnpm add -D vitest @vitejs/plugin-react jsdom @testing-library/react @testing-library/dom vite-tsconfig-paths`) and create `vitest.config.mts` with jsdom + react + tsconfigPaths plugins (needed for US5; harmless early)
 
 ---
@@ -37,12 +37,12 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T004 Register the next-intl plugin in `next.config.ts` (`createNextIntlPlugin()`) and wrap the default export
-- [ ] T005 Create `src/i18n/request.ts` with `getRequestConfig`: resolve locale from the `locale` cookie, fall back to browser locale via `headers()`, then `en`; register `messages/en.json` and `messages/fr.json` (fallback locale = `en`)
-- [ ] T006 Wrap the root layout in `src/app/layout.tsx` with `NextIntlClientProvider` (messages passed for client components)
-- [ ] T007 Add the `language` field to `user.additionalFields` in `convex/auth.ts` (type string, default `"en"`, input true) and mirror it in the `user` table in `convex/betterAuth/schema.ts` (keep both in sync per AGENTS.md)
-- [ ] T008 Add the `locale` cookie contract to `src/lib/consent.ts` sibling (new `src/lib/locale.ts` with `getLocale`/`setLocale` cookie helpers) per contracts/feature-toggles.md
-- [ ] T009 Verify `pnpm check` passes with the i18n scaffolding in place (lint + typecheck)
+- [x] T004 Register the next-intl plugin in `next.config.ts` (`createNextIntlPlugin()`) and wrap the default export
+- [x] T005 Create `src/i18n/request.ts` with `getRequestConfig`: resolve locale from the `locale` cookie, fall back to browser locale via `headers()`, then `en`; register `messages/en.json` and `messages/fr.json` (fallback locale = `en`)
+- [x] T006 Wrap the root layout in `src/app/layout.tsx` with `NextIntlClientProvider` (messages passed for client components)
+- [x] T007 Add the `language` field to `user.additionalFields` in `convex/auth.ts` (type string, default `"en"`, input true) and mirror it in the `user` table in `convex/betterAuth/schema.ts` (keep both in sync per AGENTS.md)
+- [x] T008 Add the `locale` cookie contract to `src/lib/consent.ts` sibling (new `src/lib/locale.ts` with `getLocale`/`setLocale` cookie helpers) per contracts/feature-toggles.md
+- [x] T009 Verify `pnpm check` passes with the i18n scaffolding in place (lint + typecheck)
 
 **Checkpoint**: Foundation ready - US3 implementation can begin
 
@@ -56,13 +56,13 @@
 
 ### Implementation for User Story 3
 
-- [ ] T010 [P] [US3] Create `src/components/language-switcher.tsx` (shadcn Select bound to the user's `language` field; writes the `locale` cookie via `src/lib/locale.ts` and calls the user-update mutation for signed-in users)
-- [ ] T011 [US3] Extract all user-facing strings from `src/app/page.tsx`, `src/app/login/`, `src/app/register/`, `src/app/settings/`, `src/app/dashboard/`, and `src/components/` (header, footer, auth-shell, forms, command-palette, cookie-consent) into `messages/en.json` namespaces, replacing hardcoded strings with `useTranslations`/`getTranslations` calls
-- [ ] T012 [P] [US3] Translate every key in `messages/fr.json` (all namespaces from T011) - French as the added language
-- [ ] T013 [US3] Wire the language switcher into the signed-in UI: Settings page section (per user story: Settings) and optionally the header (site-header/nav-user) for quick access
-- [ ] T014 [US3] Add `src/i18n/request.ts` browser-locale detection tests via `pnpm check` verification: unsupported locale falls back to `en`, `fr` browser locale resolves to French when no cookie
-- [ ] T015 [US3] Persist the signed-in user's `language` choice via the user-update path (Settings -> Profile or dedicated Language section) and surface it in the session so SSR resolves the right locale
-- [ ] T016 [US3] Verify FR-013: adding a language requires only a new `messages/<code>.json` + a locale registration - document the mechanism in `README.md`
+- [x] T010 [P] [US3] Create `src/components/language-switcher.tsx` (shadcn Select bound to the user's `language` field; writes the `locale` cookie via `src/lib/locale.ts` and calls the user-update mutation for signed-in users)
+- [x] T011 [US3] Extract all user-facing strings from `src/app/page.tsx`, `src/app/login/`, `src/app/register/`, `src/app/settings/`, `src/app/dashboard/`, and `src/components/` (header, footer, auth-shell, forms, command-palette, cookie-consent) into `messages/en.json` namespaces, replacing hardcoded strings with `useTranslations`/`getTranslations` calls
+- [x] T012 [P] [US3] Translate every key in `messages/fr.json` (all namespaces from T011) - French as the added language
+- [x] T013 [US3] Wire the language switcher into the signed-in UI: Settings page section (per user story: Settings) and optionally the header (site-header/nav-user) for quick access
+- [x] T014 [US3] Add `src/i18n/request.ts` browser-locale detection tests via `pnpm check` verification: unsupported locale falls back to `en`, `fr` browser locale resolves to French when no cookie
+- [x] T015 [US3] Persist the signed-in user's `language` choice via the user-update path (Settings -> Profile or dedicated Language section) and surface it in the session so SSR resolves the right locale
+- [x] T016 [US3] Verify FR-013: adding a language requires only a new `messages/<code>.json` + a locale registration - document the mechanism in `README.md`
 
 **Checkpoint**: Multi-language works - English base + French, switcher, persistence, fallback
 

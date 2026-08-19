@@ -33,6 +33,12 @@ const roleClientPlugin = () =>
               defaultValue: true,
               input: true,
             },
+            language: {
+              type: "string",
+              required: false,
+              defaultValue: "en",
+              input: true,
+            },
           },
         },
       },

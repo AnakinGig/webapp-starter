@@ -37,6 +37,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                   emailVerified: boolean;
                   image?: null | string;
                   isAnonymous?: null | boolean;
+                  language?: null | string;
                   name: string;
                   notifyResetEmails?: null | boolean;
                   notifyVerificationEmails?: null | boolean;
@@ -186,6 +187,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                     | "role"
                     | "notifyVerificationEmails"
                     | "notifyResetEmails"
+                    | "language"
                     | "_id";
                   mode?: "sensitive" | "insensitive";
                   operator?:
@@ -559,6 +561,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                     | "role"
                     | "notifyVerificationEmails"
                     | "notifyResetEmails"
+                    | "language"
                     | "_id";
                   mode?: "sensitive" | "insensitive";
                   operator?:
@@ -1003,6 +1006,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                   emailVerified?: boolean;
                   image?: null | string;
                   isAnonymous?: null | boolean;
+                  language?: null | string;
                   name?: string;
                   notifyResetEmails?: null | boolean;
                   notifyVerificationEmails?: null | boolean;
@@ -1033,6 +1037,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                     | "role"
                     | "notifyVerificationEmails"
                     | "notifyResetEmails"
+                    | "language"
                     | "_id";
                   mode?: "sensitive" | "insensitive";
                   operator?:
@@ -1471,6 +1476,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                   emailVerified?: boolean;
                   image?: null | string;
                   isAnonymous?: null | boolean;
+                  language?: null | string;
                   name?: string;
                   notifyResetEmails?: null | boolean;
                   notifyVerificationEmails?: null | boolean;
@@ -1501,6 +1507,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                     | "role"
                     | "notifyVerificationEmails"
                     | "notifyResetEmails"
+                    | "language"
                     | "_id";
                   mode?: "sensitive" | "insensitive";
                   operator?:

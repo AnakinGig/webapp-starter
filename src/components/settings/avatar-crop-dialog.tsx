@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import Cropper, { type Area, type Point } from "react-easy-crop";
 import { LoaderCircle, Minus, Plus, RotateCcw, RotateCw } from "lucide-react";
 
@@ -28,13 +29,14 @@ const MIN_BOX_SIDE = 64; // px - ...and never gets thinner than this
 
 type Size = { width: number; height: number };
 
-async function createImage(src: string): Promise<HTMLImageElement> {
+async function createImage(
+  src: string,
+  loadErrorMessage: string,
+): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const image = new Image();
     image.addEventListener("load", () => resolve(image));
-    image.addEventListener("error", () =>
-      reject(new Error("Could not load the image.")),
-    );
+    image.addEventListener("error", () => reject(new Error(loadErrorMessage)));
     image.src = src;
   });
 }
@@ -104,6 +106,8 @@ export function AvatarCropDialog({
   onClose,
   onSave,
 }: AvatarCropDialogProps) {
+  const t = useTranslations("avatar");
+  const tc = useTranslations("common");
   const previewRef = useRef<HTMLCanvasElement>(null);
   // The decoded image is cached per URL so preview redraws don't re-decode.
   const imageCacheRef = useRef<{ url: string; image: HTMLImageElement } | null>(
@@ -176,7 +180,7 @@ export function AvatarCropDialog({
               ? imageCacheRef.current.image
               : null;
           if (!image) {
-            image = await createImage(imageUrl);
+            image = await createImage(imageUrl, t("loadFailed"));
             imageCacheRef.current = { url: imageUrl, image };
           }
           const out = await renderCropWithImage(
@@ -197,7 +201,7 @@ export function AvatarCropDialog({
       cancelled = true;
       cancelAnimationFrame(id);
     };
-  }, [open, imageUrl, pixelCrop, rotation]);
+  }, [open, imageUrl, pixelCrop, rotation, t]);
 
   async function handleSave() {
     if (!imageUrl || !pixelCrop || saving) return;
@@ -206,7 +210,7 @@ export function AvatarCropDialog({
       const image =
         imageCacheRef.current?.url === imageUrl
           ? imageCacheRef.current.image
-          : await createImage(imageUrl);
+          : await createImage(imageUrl, t("loadFailed"));
       const out = await renderCropWithImage(
         image,
         pixelCrop,
@@ -223,12 +227,12 @@ export function AvatarCropDialog({
         (await new Promise<Blob | null>((resolve) =>
           out.toBlob(resolve, "image/png"),
         ));
-      if (!blob) throw new Error("Could not process the image.");
+      if (!blob) throw new Error(t("processFailed"));
       await onSave(blob);
     } catch (err) {
       // Show upload/processing failures inside the dialog so they are
       // actually visible (the uploader's own error sits behind the modal).
-      setError(err instanceof Error ? err.message : "Couldn't save the photo.");
+      setError(err instanceof Error ? err.message : t("saveFailed"));
     } finally {
       setSaving(false);
     }
@@ -243,12 +247,8 @@ export function AvatarCropDialog({
     >
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Adjust your photo</DialogTitle>{" "}
-          <DialogDescription>
-            The whole photo is shown with the avatar frame overlaid - the dimmed
-            area will not be in the avatar. Drag to move, scroll or use the
-            slider to zoom, and rotate with the button.
-          </DialogDescription>
+          <DialogTitle>{t("adjustTitle")}</DialogTitle>{" "}
+          <DialogDescription>{t("adjustDescription")}</DialogDescription>
         </DialogHeader>
 
         <div
@@ -304,16 +304,14 @@ export function AvatarCropDialog({
                 type="button"
                 variant="outline"
                 size="icon-sm"
-                aria-label="Zoom out"
+                aria-label={t("zoomOut")}
                 disabled={zoom <= 1}
                 onClick={() => setZoom(Math.max(1, zoom / 1.25))}
               >
                 <Minus className="size-4" />
               </Button>
             </TooltipTrigger>
-            {zoom <= 1 && (
-              <TooltipContent>Already at minimum zoom.</TooltipContent>
-            )}
+            {zoom <= 1 && <TooltipContent>{t("minZoom")}</TooltipContent>}
           </Tooltip>
           <input
             type="range"
@@ -321,7 +319,7 @@ export function AvatarCropDialog({
             max={MAX_ZOOM}
             step={0.01}
             value={zoom}
-            aria-label="Zoom"
+            aria-label={t("zoom")}
             onChange={(event) => setZoom(Number(event.target.value))}
             className="accent-foreground h-2 flex-1 cursor-pointer"
           />
@@ -331,7 +329,7 @@ export function AvatarCropDialog({
                 type="button"
                 variant="outline"
                 size="icon-sm"
-                aria-label="Zoom in"
+                aria-label={t("zoomIn")}
                 disabled={zoom >= MAX_ZOOM}
                 onClick={() => setZoom(Math.min(MAX_ZOOM, zoom * 1.25))}
               >
@@ -339,14 +337,14 @@ export function AvatarCropDialog({
               </Button>
             </TooltipTrigger>
             {zoom >= MAX_ZOOM && (
-              <TooltipContent>Already at maximum zoom.</TooltipContent>
+              <TooltipContent>{t("maxZoom")}</TooltipContent>
             )}
           </Tooltip>
           <Button
             type="button"
             variant="outline"
             size="icon-sm"
-            aria-label="Rotate 90 degrees"
+            aria-label={t("rotate")}
             onClick={() => setRotation((r) => (r + ROTATION_STEP) % 360)}
           >
             <RotateCw className="size-4" />
@@ -357,7 +355,7 @@ export function AvatarCropDialog({
                 type="button"
                 variant="ghost"
                 size="icon-sm"
-                aria-label="Reset zoom, position and rotation"
+                aria-label={t("reset")}
                 disabled={atDefault}
                 onClick={() => {
                   setCrop({ x: 0, y: 0 });
@@ -368,12 +366,14 @@ export function AvatarCropDialog({
                 <RotateCcw className="size-4" />
               </Button>
             </TooltipTrigger>
-            {atDefault && <TooltipContent>Nothing to reset.</TooltipContent>}
+            {atDefault && (
+              <TooltipContent>{t("nothingToReset")}</TooltipContent>
+            )}
           </Tooltip>
         </div>
 
         <div className="flex items-center gap-3">
-          <span className="text-muted-foreground text-xs">Preview</span>
+          <span className="text-muted-foreground text-xs">{t("preview")}</span>
           <div className="bg-muted/50 ring-border relative h-16 w-16 overflow-hidden rounded-lg ring-1">
             <canvas
               ref={previewRef}
@@ -385,7 +385,7 @@ export function AvatarCropDialog({
           <span className="text-muted-foreground text-xs">
             {natural
               ? `${natural.width} × ${natural.height}px`
-              : "Loading image…"}
+              : t("loadingImage")}
           </span>
         </div>
 
@@ -397,7 +397,7 @@ export function AvatarCropDialog({
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={saving}>
-            Cancel
+            {tc("cancel")}
           </Button>
           <Tooltip>
             <TooltipTrigger render={<span className="inline-flex" />}>
@@ -408,15 +408,15 @@ export function AvatarCropDialog({
                 {saving ? (
                   <>
                     <LoaderCircle className="size-4 animate-spin" />
-                    Saving…
+                    {t("saving")}
                   </>
                 ) : (
-                  "Save photo"
+                  t("savePhoto")
                 )}
               </Button>
             </TooltipTrigger>
             {!saving && !pixelCrop && (
-              <TooltipContent>Adjust your photo before saving.</TooltipContent>
+              <TooltipContent>{t("adjustBeforeSave")}</TooltipContent>
             )}
           </Tooltip>
         </DialogFooter>

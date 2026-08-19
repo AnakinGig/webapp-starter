@@ -124,6 +124,23 @@ Both better-auth hooks (`sendVerificationEmail`, `sendResetPassword`) already ca
 
 ---
 
+## 🌐 Multi-language (i18n)
+
+The app ships with **English as the base language** and **French** added now. Everything is driven by [next-intl](https://next-intl.dev):
+
+- **Locale resolution** (`src/i18n/request.ts`): saved preference (the `locale` cookie) > browser locale (`accept-language`) > `en` fallback.
+- **Runtime switching**: the language switcher (header, and Settings → Language) writes the `locale` cookie and re-renders the current page immediately (no full reload). For signed-in users the choice is also saved on the account (`user.language`), so it follows them across devices.
+- **Translations**: all user-facing strings live in `messages/en.json` and `messages/fr.json` (UI, auth forms, settings, command palette, cookie consent, error page). Server-side messages and better-auth error codes stay English in v1.
+
+### Adding a language
+
+Adding a language is data-only - no code changes:
+
+1. Add the code to `locales` in `src/i18n/config.ts` (e.g. `"es"`) and to `isLocale`.
+2. Create `messages/es.json` (copy `en.json` as a starting point and translate). Missing keys fall back to English automatically.
+
+---
+
 ## 🧱 Project structure
 
 ```

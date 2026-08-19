@@ -28,6 +28,8 @@ export const tables = {
     // Notification preferences (mirror user.additionalFields in auth.ts).
     notifyVerificationEmails: v.optional(v.union(v.null(), v.boolean())),
     notifyResetEmails: v.optional(v.union(v.null(), v.boolean())),
+    // Locale preference (mirror user.additionalFields.language in auth.ts).
+    language: v.optional(v.union(v.null(), v.string())),
   })
     .index("email_name", ["email", "name"])
     .index("name", ["name"])
