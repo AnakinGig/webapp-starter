@@ -53,7 +53,7 @@ export const appSettings = {
   legalLastUpdated: "August 5, 2026",
 
   /* ── Tech stack badges (landing + auth pages) ──────────────────────── */
-  stack: ["Next.js", "React", "Tailwind", "shadcn", "Lucide"],
+  stack: ["Next.js", "React", "Tailwind", "shadcn"],
 
   /* ── Footer navigation ─────────────────────────────────────────────── */
   footerNav: {
