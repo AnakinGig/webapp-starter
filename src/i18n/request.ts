@@ -1,14 +1,21 @@
 import { getRequestConfig } from "next-intl/server";
 import { cookies, headers } from "next/headers";
 
-import { defaultLocale, isLocale } from "./config";
+import { defaultLocale, isLocale, type Locale } from "./config";
 
-export default getRequestConfig(async () => {
+/**
+ * Resolve the locale for the current request, then load its message catalog.
+ * Order: saved preference (locale cookie) > browser locale > English.
+ * Returning `messages` here is what makes both server-side getTranslations and
+ * the client-side NextIntlClientProvider work - without it next-intl reports
+ * "No messages were configured" / "No messages found".
+ */
+async function resolveLocale(): Promise<Locale> {
   // 1. Saved preference (cookie) - set by the language switcher.
   const cookieStore = await cookies();
   const saved = cookieStore.get("locale")?.value;
   if (isLocale(saved)) {
-    return { locale: saved };
+    return saved;
   }
 
   // 2. Browser locale - for visitors without a saved preference. Only accept
@@ -22,9 +29,22 @@ export default getRequestConfig(async () => {
     ?.trim()
     .toLowerCase();
   if (isLocale(browserLocale)) {
-    return { locale: browserLocale };
+    return browserLocale;
   }
 
   // 3. Default (English).
-  return { locale: defaultLocale };
+  return defaultLocale;
+}
+
+export default getRequestConfig(async () => {
+  const locale = await resolveLocale();
+  // The dynamic import is typed `any` by TS (template-literal path), which the
+  // project's type-checked ESLint rules flag - cast through a typed shape.
+  const catalog = (await import(`../../messages/${locale}.json`)) as {
+    default: Record<string, unknown>;
+  };
+  return {
+    locale,
+    messages: catalog.default,
+  };
 });
