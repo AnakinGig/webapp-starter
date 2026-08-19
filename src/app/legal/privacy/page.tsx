@@ -1,6 +1,7 @@
-import type { Metadata } from "next"
+import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 
-import { legalInfo } from "@/lib/legal"
+import { legalInfo } from "@/lib/legal";
 import {
   LegalEmailLink,
   LegalLink,
@@ -8,193 +9,131 @@ import {
   LegalPage,
   LegalParagraph,
   LegalSection,
-} from "@/components/legal/legal-document"
+} from "@/components/legal/legal-document";
 
 export const metadata: Metadata = {
   title: "Privacy Policy",
-}
+};
 
-export default function PrivacyPolicyPage() {
+export default async function PrivacyPolicyPage() {
+  const t = await getTranslations("legalPrivacy");
+
   return (
-    <LegalPage title="Privacy Policy">
-      <LegalSection id="introduction" title="1. Introduction">
+    <LegalPage title={t("title")}>
+      <LegalSection id="introduction" title={t("section1Title")}>
         <LegalParagraph>
-          {legalInfo.legalEntity} (&ldquo;we&rdquo;, &ldquo;us&rdquo;) operates{" "}
-          {legalInfo.serviceName}. This Privacy Policy explains what personal
-          data we collect, why we collect it, how we use and protect it, and
-          the rights you have over it.
+          {t("section1Text1", {
+            legalEntity: legalInfo.legalEntity,
+            serviceName: legalInfo.serviceName,
+          })}
         </LegalParagraph>
-        <LegalParagraph>
-          By creating an account or using the service, you agree to the
-          practices described in this policy. We keep this page up to date and
-          mark the date at the top whenever it changes.
-        </LegalParagraph>
+        <LegalParagraph>{t("section1Text2")}</LegalParagraph>
       </LegalSection>
 
-      <LegalSection id="data-we-collect" title="2. Information we collect">
+      <LegalSection id="data-we-collect" title={t("section2Title")}>
         <LegalList
           items={[
             <>
-              <strong>Account data</strong> - your name, email address, and
-              profile picture when you register, or when you sign in with a
-              third-party provider (such as GitHub OAuth, which shares your
-              name, email, and avatar with your permission).
+              {t.rich("section2Item1", { strong: (c) => <strong>{c}</strong> })}
             </>,
             <>
-              <strong>Authentication and security data</strong> - a securely
-              hashed password if you register with email (never stored in
-              plain text), session identifiers, IP addresses, and
-              user-agent information, which keep you signed in and help us
-              detect abuse.
+              {t.rich("section2Item2", { strong: (c) => <strong>{c}</strong> })}
             </>,
             <>
-              <strong>Content you create</strong> - anything you submit,
-              publish, or upload through the service.
+              {t.rich("section2Item3", { strong: (c) => <strong>{c}</strong> })}
             </>,
             <>
-              <strong>Analytics and marketing data</strong> - only if you
-              consent via our cookie banner; we don&apos;t collect any
-              tracking data without your choice.
+              {t.rich("section2Item4", { strong: (c) => <strong>{c}</strong> })}
             </>,
           ]}
         />
       </LegalSection>
 
-      <LegalSection id="how-we-use" title="3. How we use your information">
+      <LegalSection id="how-we-use" title={t("section3Title")}>
         <LegalList
           items={[
-            "To provide, operate, and maintain your account and the service.",
-            "To authenticate you and keep your sessions secure.",
-            "To communicate with you about your account and service changes.",
-            "To prevent fraud, abuse, and security incidents.",
-            "To comply with legal obligations.",
-            "To improve the service through aggregated analytics - only where you have consented.",
+            t("section3Item1"),
+            t("section3Item2"),
+            t("section3Item3"),
+            t("section3Item4"),
+            t("section3Item5"),
+            t("section3Item6"),
           ]}
         />
       </LegalSection>
 
-      <LegalSection id="legal-bases" title="4. Legal bases for processing">
+      <LegalSection id="legal-bases" title={t("section4Title")}>
+        <LegalParagraph>{t("section4Text")}</LegalParagraph>
+      </LegalSection>
+
+      <LegalSection id="cookies" title={t("section5Title")}>
         <LegalParagraph>
-          We process personal data on the following bases: performing the
-          contract you enter into when you create an account; our legitimate
-          interests in operating and securing the service; your consent (for
-          optional analytics and marketing); and compliance with legal
-          obligations.
+          {t.rich("section5Text", {
+            link: (chunks) => (
+              <LegalLink href="/legal/cookies">{chunks}</LegalLink>
+            ),
+          })}
         </LegalParagraph>
       </LegalSection>
 
-      <LegalSection id="cookies" title="5. Cookies">
-        <LegalParagraph>
-          We use a small number of strictly necessary and functional cookies -
-          for example to keep you signed in and to remember your consent
-          choices. Optional analytics and marketing cookies are only used if
-          you allow them through the consent banner, which you can reopen at
-          any time from the &ldquo;Cookie settings&rdquo; link in the footer.
-          See our <LegalLink href="/legal/cookies">Cookie Policy</LegalLink>{" "}
-          for details.
-        </LegalParagraph>
+      <LegalSection id="sharing" title={t("section6Title")}>
+        <LegalParagraph>{t("section6Text")}</LegalParagraph>
       </LegalSection>
 
-      <LegalSection id="sharing" title="6. How we share information">
-        <LegalParagraph>
-          We do not sell your personal data. We share it only with a limited
-          set of service providers who process it on our behalf (for example
-          our database hosting provider), and with the identity provider you
-          choose when signing in with OAuth. These providers are bound by
-          data-processing agreements and may only use your data to provide
-          services to us.
-        </LegalParagraph>
+      <LegalSection id="transfers" title={t("section7Title")}>
+        <LegalParagraph>{t("section7Text")}</LegalParagraph>
       </LegalSection>
 
-      <LegalSection id="transfers" title="7. International transfers">
-        <LegalParagraph>
-          Your data may be processed in countries other than your own. Where
-          we transfer data outside the EEA or the UK, we rely on appropriate
-          safeguards such as standard contractual clauses, and we take steps
-          to keep that data protected to the same standard described in this
-          policy.
-        </LegalParagraph>
+      <LegalSection id="retention" title={t("section8Title")}>
+        <LegalParagraph>{t("section8Text")}</LegalParagraph>
       </LegalSection>
 
-      <LegalSection id="retention" title="8. Data retention">
-        <LegalParagraph>
-          We keep your data for as long as your account is active and for as
-          long as needed to comply with legal obligations, resolve disputes,
-          and enforce our agreements. Session data expires automatically.
-          You can delete your account - and all of your data - at any time
-          from Settings → Profile → Danger zone.
-        </LegalParagraph>
-      </LegalSection>
-
-      <LegalSection id="your-rights" title="9. Your rights">
-        <LegalParagraph>
-          Depending on where you live, you may have the right to access,
-          rectify, export, erase, restrict, or object to the processing of
-          your personal data, and to withdraw consent at any time.
-        </LegalParagraph>
+      <LegalSection id="your-rights" title={t("section9Title")}>
+        <LegalParagraph>{t("section9Intro")}</LegalParagraph>
         <LegalList
           items={[
             <>
-              <strong>Access and rectification</strong> - review and edit your
-              profile in Settings.
+              {t.rich("section9Item1", { strong: (c) => <strong>{c}</strong> })}
             </>,
             <>
-              <strong>Export (portability)</strong> - download your data as
-              JSON from Settings → Profile → Account data.
+              {t.rich("section9Item2", { strong: (c) => <strong>{c}</strong> })}
             </>,
             <>
-              <strong>Erasure</strong> - delete your account in Settings →
-              Profile → Danger zone, which removes your profile, sessions,
-              and content.
+              {t.rich("section9Item3", { strong: (c) => <strong>{c}</strong> })}
             </>,
             <>
-              <strong>Withdraw consent</strong> - change your cookie choices
-              anytime via the footer &ldquo;Cookie settings&rdquo; link.
+              {t.rich("section9Item4", { strong: (c) => <strong>{c}</strong> })}
             </>,
             <>
-              <strong>Complaints</strong> - contact us first at{" "}
-              <LegalEmailLink />; you also have the right to lodge a complaint
-              with your local data-protection authority (EU/UK) or the
-              California Privacy Protection Agency (US).
+              {t.rich("section9Item5", {
+                strong: (c) => <strong>{c}</strong>,
+                email: () => <LegalEmailLink />,
+              })}
             </>,
           ]}
         />
       </LegalSection>
 
-      <LegalSection id="security" title="10. Security">
-        <LegalParagraph>
-          We protect your data with encryption in transit, hashed passwords,
-          and access controls. No method of transmission or storage is 100%
-          secure, and we cannot guarantee absolute security.
-        </LegalParagraph>
+      <LegalSection id="security" title={t("section10Title")}>
+        <LegalParagraph>{t("section10Text")}</LegalParagraph>
       </LegalSection>
 
-      <LegalSection id="children" title="11. Children">
-        <LegalParagraph>
-          The service is not intended for children under 13 (or under 16 in
-          the EU/UK). If you believe a child has provided us personal data,
-          contact us and we will delete it.
-        </LegalParagraph>
+      <LegalSection id="children" title={t("section11Title")}>
+        <LegalParagraph>{t("section11Text")}</LegalParagraph>
       </LegalSection>
 
-      <LegalSection id="changes" title="12. Changes to this policy">
-        <LegalParagraph>
-          We may update this policy from time to time. Material changes will
-          be reflected by the &ldquo;Last updated&rdquo; date at the top of
-          this page, and continued use of the service after changes means you
-          accept the updated policy.
-        </LegalParagraph>
+      <LegalSection id="changes" title={t("section12Title")}>
+        <LegalParagraph>{t("section12Text")}</LegalParagraph>
       </LegalSection>
 
-      <LegalSection id="contact" title="13. Contact us">
+      <LegalSection id="contact" title={t("section13Title")}>
         <LegalParagraph>
-          Questions about this policy or your data? Contact us at{" "}
-          <LegalEmailLink />
+          {t("section13Text")} <LegalEmailLink />
           {legalInfo.address !== "[Registered address]"
-            ? ` or by mail at ${legalInfo.address}.`
+            ? t("section13Mail", { address: legalInfo.address })
             : "."}
         </LegalParagraph>
       </LegalSection>
     </LegalPage>
-  )
+  );
 }

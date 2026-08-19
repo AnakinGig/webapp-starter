@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
+import { useTranslations } from "next-intl";
 import { TriangleAlertIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -59,6 +60,8 @@ export function UserDialog({
   onClearError,
   pending = false,
 }: Props) {
+  const t = useTranslations("admin.dialog");
+  const tc = useTranslations("common");
   const isEdit = Boolean(user);
 
   const [name, setName] = useState("");
@@ -86,7 +89,7 @@ export function UserDialog({
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!isValidEmail(email)) {
-      setLocalEmailError("Enter a valid email address.");
+      setLocalEmailError(t("invalidEmail"));
       return;
     }
     setLocalEmailError(null);
@@ -107,17 +110,15 @@ export function UserDialog({
       <DialogContent className="sm:max-w-md">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>{isEdit ? "Edit user" : "Add user"}</DialogTitle>
+            <DialogTitle>{isEdit ? t("editUser") : t("addUser")}</DialogTitle>
             <DialogDescription>
-              {isEdit
-                ? "Update this user's profile and access."
-                : "Create a new user record in your directory."}
+              {isEdit ? t("editUserDescription") : t("addUserDescription")}
             </DialogDescription>
           </DialogHeader>
 
           <FieldGroup className="py-4">
             <Field>
-              <FieldLabel htmlFor="user-name">Full name</FieldLabel>
+              <FieldLabel htmlFor="user-name">{tc("fullName")}</FieldLabel>
               <Input
                 id="user-name"
                 value={name}
@@ -130,7 +131,7 @@ export function UserDialog({
               />
             </Field>
             <Field>
-              <FieldLabel htmlFor="user-email">Email</FieldLabel>
+              <FieldLabel htmlFor="user-email">{tc("email")}</FieldLabel>
               <Input
                 id="user-email"
                 type="email"
@@ -142,7 +143,7 @@ export function UserDialog({
                 }}
                 onBlur={() => {
                   if (email && !isValidEmail(email)) {
-                    setLocalEmailError("Enter a valid email address.");
+                    setLocalEmailError(t("invalidEmail"));
                   }
                 }}
                 placeholder="you@company.com"
@@ -154,7 +155,7 @@ export function UserDialog({
               )}
             </Field>
             <Field>
-              <FieldLabel>Role</FieldLabel>
+              <FieldLabel>{t("role")}</FieldLabel>
               <Select
                 value={role}
                 onValueChange={(value) => {
@@ -166,15 +167,15 @@ export function UserDialog({
                 disabled={disabledRole}
               >
                 <SelectTrigger className="w-full" disabled={disabledRole}>
-                  <SelectValue placeholder="Select a role" />
+                  <SelectValue placeholder={t("selectRole")} />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
                     <SelectItem value="user" disabled={disabledRole}>
-                      User
+                      {t("userRole")}
                     </SelectItem>
                     <SelectItem value="admin" disabled={disabledRole}>
-                      Admin
+                      {t("adminRole")}
                     </SelectItem>
                   </SelectGroup>
                 </SelectContent>
@@ -182,7 +183,7 @@ export function UserDialog({
               {roleError && <FieldError>{roleError}</FieldError>}
               {disabledRole && (
                 <p className="text-muted-foreground text-xs">
-                  You can&apos;t change your own role.
+                  {t("cannotChangeOwnRole")}
                 </p>
               )}
             </Field>
@@ -200,16 +201,16 @@ export function UserDialog({
               variant="outline"
               onClick={() => onOpenChange(false)}
             >
-              Cancel
+              {tc("cancel")}
             </Button>
             <Button type="submit" disabled={pending}>
               {pending
                 ? isEdit
-                  ? "Saving…"
-                  : "Creating…"
+                  ? t("saving")
+                  : t("creating")
                 : isEdit
-                  ? "Save changes"
-                  : "Create user"}
+                  ? t("saveChanges")
+                  : t("createUser")}
             </Button>
           </DialogFooter>
         </form>

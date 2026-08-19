@@ -1,13 +1,14 @@
-import type { Metadata } from "next"
+import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 
-import { legalInfo } from "@/lib/legal"
+import { legalInfo } from "@/lib/legal";
 import {
   LegalEmailLink,
   LegalList,
   LegalPage,
   LegalParagraph,
   LegalSection,
-} from "@/components/legal/legal-document"
+} from "@/components/legal/legal-document";
 import {
   Table,
   TableBody,
@@ -15,58 +16,53 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
+} from "@/components/ui/table";
 
 export const metadata: Metadata = {
   title: "Cookie Policy",
-}
+};
 
-const cookies = [
-  {
-    name: "cookie-consent",
-    purpose: "Stores your cookie consent choices",
-    category: "Essential",
-    expiry: "1 year",
-  },
-  {
-    name: "better-auth.session_token",
-    purpose: "Keeps you signed in (auth session)",
-    category: "Essential",
-    expiry: "Session / 7 days",
-  },
-  {
-    name: "better-auth.message",
-    purpose: "Transient messages during sign-in/out redirects",
-    category: "Functional",
-    expiry: "Session",
-  },
-]
+export default async function CookiePolicyPage() {
+  const t = await getTranslations("legalCookies");
 
-export default function CookiePolicyPage() {
+  const cookies = [
+    {
+      name: "cookie-consent",
+      purpose: t("cookie1Purpose"),
+      category: t("essential"),
+      expiry: t("expiry1Year"),
+    },
+    {
+      name: "better-auth.session_token",
+      purpose: t("cookie2Purpose"),
+      category: t("essential"),
+      expiry: t("expirySession7Days"),
+    },
+    {
+      name: "better-auth.message",
+      purpose: t("cookie3Purpose"),
+      category: t("functional"),
+      expiry: t("expirySession"),
+    },
+  ];
+
   return (
-    <LegalPage title="Cookie Policy">
-      <LegalSection id="what-are-cookies" title="1. What are cookies?">
-        <LegalParagraph>
-          Cookies are small text files stored on your device by your browser.
-          They let a website recognize your browser and remember information,
-          such as your login state or your preferences.
-        </LegalParagraph>
+    <LegalPage title={t("title")}>
+      <LegalSection id="what-are-cookies" title={t("section1Title")}>
+        <LegalParagraph>{t("section1Text")}</LegalParagraph>
       </LegalSection>
 
-      <LegalSection id="cookies-we-use" title="2. Cookies we use">
+      <LegalSection id="cookies-we-use" title={t("section2Title")}>
         <LegalParagraph>
-          {legalInfo.serviceName} only sets the cookies listed below. We do
-          not use third-party advertising cookies. Analytics or marketing
-          cookies are only ever set if you explicitly allow them in the
-          consent banner.
+          {t("section2Intro", { serviceName: legalInfo.serviceName })}
         </LegalParagraph>
         <Table className="mt-2 [&_td]:whitespace-normal">
           <TableHeader>
             <TableRow>
-              <TableHead>Cookie</TableHead>
-              <TableHead>Purpose</TableHead>
-              <TableHead>Category</TableHead>
-              <TableHead>Expiry</TableHead>
+              <TableHead>{t("tableCookie")}</TableHead>
+              <TableHead>{t("tablePurpose")}</TableHead>
+              <TableHead>{t("tableCategory")}</TableHead>
+              <TableHead>{t("tableExpiry")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -82,52 +78,32 @@ export default function CookiePolicyPage() {
             ))}
           </TableBody>
         </Table>
-        <LegalParagraph>
-          Note: on HTTPS deployments the auth session cookie is served with a
-          secure prefix (<code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">__Secure-better-auth.session_token</code>).
-          If you enable additional authentication plugins (for example
-          last-login-method or OAuth popups), extra functional cookies may be
-          set - update this table accordingly.
-        </LegalParagraph>
+        <LegalParagraph>{t("section2Note")}</LegalParagraph>
       </LegalSection>
 
-      <LegalSection id="consent" title="3. Consent">
-        <LegalParagraph>
-          Essential and functional cookies are required for the service to
-          work and are therefore exempt from consent. For any optional
-          categories, we ask for your consent through the banner that appears
-          on your first visit. You can accept all, accept only essential
-          cookies, or open preferences to choose per category.
-        </LegalParagraph>
+      <LegalSection id="consent" title={t("section3Title")}>
+        <LegalParagraph>{t("section3Text")}</LegalParagraph>
         <LegalList
           items={[
             <>
-              <strong>Withdraw or change your choice</strong> - use the
-              &ldquo;Cookie settings&rdquo; link in the footer, or your
-              browser&apos;s cookie controls, at any time.
+              {t.rich("section3Item1", { strong: (c) => <strong>{c}</strong> })}
             </>,
             <>
-              <strong>How long consent lasts</strong> - your choice is stored
-              in a cookie for one year, after which you&apos;ll be asked
-              again. We may also re-ask if our policy changes materially.
+              {t.rich("section3Item2", { strong: (c) => <strong>{c}</strong> })}
             </>,
           ]}
         />
       </LegalSection>
 
-      <LegalSection id="managing-cookies" title="4. Managing cookies in your browser">
-        <LegalParagraph>
-          Most browsers let you view, block, or delete cookies through their
-          settings. Blocking essential cookies may prevent the service from
-          working correctly (for example, keeping you signed in).
-        </LegalParagraph>
+      <LegalSection id="managing-cookies" title={t("section4Title")}>
+        <LegalParagraph>{t("section4Text")}</LegalParagraph>
       </LegalSection>
 
-      <LegalSection id="contact" title="5. Contact">
+      <LegalSection id="contact" title={t("section5Title")}>
         <LegalParagraph>
-          Questions about this policy? Contact us at <LegalEmailLink />.
+          {t("section5Text")} <LegalEmailLink />.
         </LegalParagraph>
       </LegalSection>
     </LegalPage>
-  )
+  );
 }

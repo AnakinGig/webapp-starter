@@ -21,6 +21,7 @@ import {
   MailCheckIcon,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 
 import { api } from "@/convex/_generated/api";
@@ -110,23 +111,21 @@ function errorMessage(err: unknown, fallback: string): string {
 /** Shown when the caller isn't an admin (or the session died) - the layout
  *  redirects on the next navigation; this keeps the page usable meanwhile. */
 function AccessRequired({ onRetry }: { onRetry?: () => void }) {
+  const t = useTranslations("admin");
   return (
     <Empty className="py-16">
       <EmptyHeader>
         <EmptyMedia variant="icon">
           <UsersIcon />
         </EmptyMedia>
-        <EmptyTitle>Access required</EmptyTitle>
-        <EmptyDescription>
-          Your session has ended or you no longer have admin access. Sign back
-          in to manage users.
-        </EmptyDescription>
+        <EmptyTitle>{t("accessRequired")}</EmptyTitle>
+        <EmptyDescription>{t("accessRequiredDescription")}</EmptyDescription>
       </EmptyHeader>
       <div className="flex flex-wrap items-center justify-center gap-2">
-        <Button render={<Link href="/login" />}>Sign in</Button>
+        <Button render={<Link href="/login" />}>{t("signIn")}</Button>
         {onRetry && (
           <Button type="button" variant="outline" onClick={onRetry}>
-            Try again
+            {t("tryAgain")}
           </Button>
         )}
       </div>
@@ -155,7 +154,11 @@ function isAuthError(error: unknown): boolean {
  * of an error page.
  */
 class AdminQueryBoundary extends Component<
-  { children: ReactNode; authenticated: boolean },
+  {
+    children: ReactNode;
+    authenticated: boolean;
+    t: (key: string) => string;
+  },
   { error: Error | null }
 > {
   state: { error: Error | null } = { error: null };
@@ -190,23 +193,22 @@ class AdminQueryBoundary extends Component<
           <AccessRequired onRetry={() => this.setState({ error: null })} />
         );
       }
+      const t = this.props.t;
       return (
         <Empty className="py-16">
           <EmptyHeader>
             <EmptyMedia variant="icon">
               <TriangleAlertIcon />
             </EmptyMedia>
-            <EmptyTitle>Something went wrong</EmptyTitle>
-            <EmptyDescription>
-              Couldn&apos;t load the user list. Try again, or sign back in.
-            </EmptyDescription>
+            <EmptyTitle>{t("somethingWentWrong")}</EmptyTitle>
+            <EmptyDescription>{t("loadUsersFailed")}</EmptyDescription>
           </EmptyHeader>
           <Button
             type="button"
             variant="outline"
             onClick={() => this.setState({ error: null })}
           >
-            Try again
+            {t("tryAgain")}
           </Button>
         </Empty>
       );
@@ -242,6 +244,7 @@ function StatCard({
 }
 
 export function UserManagement() {
+  const t = useTranslations("admin");
   const { data: session, isPending: sessionPending } = authClient.useSession();
   const convexAuth = useConvexAuth();
 
@@ -253,6 +256,7 @@ export function UserManagement() {
     <AdminQueryBoundary
       key={session?.user?.id ?? "anon"}
       authenticated={!convexAuth.isLoading && convexAuth.isAuthenticated}
+      t={t}
     >
       <UserManagementInner
         session={session}
@@ -272,6 +276,7 @@ function UserManagementInner({
   sessionPending: boolean;
   convexAuth: ReturnType<typeof useConvexAuth>;
 }) {
+  const t = useTranslations("admin");
   const [page, setPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
@@ -337,10 +342,10 @@ function UserManagementInner({
     try {
       if (user) {
         await updateUser({ id: user.id, ...values });
-        toast.success("User updated.");
+        toast.success(t("userUpdated"));
       } else {
         await createUser(values);
-        toast.success("User created.");
+        toast.success(t("userCreated"));
       }
       setDialogOpen(false);
       setEditing(null);
@@ -348,9 +353,7 @@ function UserManagementInner({
     } catch (err) {
       // Keep the dialog open and show the error inline under the relevant
       // field (the dialog maps known messages to fields).
-      setDialogError(
-        errorMessage(err, "Something went wrong. Please try again."),
-      );
+      setDialogError(errorMessage(err, t("somethingWentWrongTryAgain")));
     } finally {
       setSaving(false);
     }
@@ -362,12 +365,12 @@ function UserManagementInner({
     setDeleteError(null);
     try {
       await deleteUser({ id: toDelete.id });
-      toast.success("User removed.");
+      toast.success(t("userRemoved"));
       setToDelete(null);
     } catch (err) {
       // Keep the dialog open and show the failure inline (e.g. the last-admin
       // guard) instead of a toast - errors live with the action, not in a toast.
-      setDeleteError(errorMessage(err, "Could not remove this user."));
+      setDeleteError(errorMessage(err, t("removeUserFailed")));
     } finally {
       setDeleting(false);
     }
@@ -388,19 +391,19 @@ function UserManagementInner({
     <div className="flex flex-col gap-6">
       <div className="grid gap-4 sm:grid-cols-3">
         <StatCard
-          label="Total users"
+          label={t("totalUsers")}
           value={stats?.total ?? 0}
           icon={UsersIcon}
           loading={statsLoading}
         />
         <StatCard
-          label="Admins"
+          label={t("admins")}
           value={stats?.admins ?? 0}
           icon={ShieldCheckIcon}
           loading={statsLoading}
         />
         <StatCard
-          label="Verified"
+          label={t("verified")}
           value={stats?.verified ?? 0}
           icon={MailCheckIcon}
           loading={statsLoading}
@@ -410,10 +413,8 @@ function UserManagementInner({
       <Card>
         <CardHeader className="border-border gap-4 border-b sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-col gap-1">
-            <CardTitle>Users</CardTitle>
-            <CardDescription>
-              Manage the people in your workspace.
-            </CardDescription>
+            <CardTitle>{t("users")}</CardTitle>
+            <CardDescription>{t("managePeople")}</CardDescription>
           </div>
           <div className="flex items-center gap-2">
             <div className="relative">
@@ -421,14 +422,14 @@ function UserManagementInner({
               <Input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search users"
+                placeholder={t("searchUsers")}
                 className="w-full pl-8 sm:w-56"
-                aria-label="Search users"
+                aria-label={t("searchUsers")}
               />
             </div>
             <Button onClick={openCreate}>
               <PlusIcon data-icon="inline-start" />
-              Add user
+              {t("addUser")}
             </Button>
           </div>
         </CardHeader>
@@ -453,11 +454,9 @@ function UserManagementInner({
                 <EmptyMedia variant="icon">
                   <UsersIcon />
                 </EmptyMedia>
-                <EmptyTitle>No users found</EmptyTitle>
+                <EmptyTitle>{t("noUsers")}</EmptyTitle>
                 <EmptyDescription>
-                  {debouncedQuery
-                    ? "Try a different search term."
-                    : "Get started by adding your first user."}
+                  {debouncedQuery ? t("tryDifferentSearch") : t("addFirstUser")}
                 </EmptyDescription>
               </EmptyHeader>
             </Empty>
@@ -466,12 +465,12 @@ function UserManagementInner({
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>User</TableHead>
-                    <TableHead>Role</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Joined</TableHead>
+                    <TableHead>{t("user")}</TableHead>
+                    <TableHead>{t("role")}</TableHead>
+                    <TableHead>{t("status")}</TableHead>
+                    <TableHead>{t("joined")}</TableHead>
                     <TableHead className="w-10 text-right">
-                      <span className="sr-only">Actions</span>
+                      <span className="sr-only">{t("actions")}</span>
                     </TableHead>
                   </TableRow>
                 </TableHeader>
@@ -506,9 +505,9 @@ function UserManagementInner({
                       </TableCell>
                       <TableCell>
                         {user.emailVerified ? (
-                          <Badge variant="secondary">Active</Badge>
+                          <Badge variant="secondary">{t("active")}</Badge>
                         ) : (
-                          <Badge variant="outline">Pending</Badge>
+                          <Badge variant="outline">{t("pending")}</Badge>
                         )}
                       </TableCell>
                       <TableCell className="text-muted-foreground text-sm tabular-nums">
@@ -521,7 +520,9 @@ function UserManagementInner({
                               <Button
                                 variant="ghost"
                                 size="icon-sm"
-                                aria-label={`Actions for ${user.name ?? user.email}`}
+                                aria-label={t("actionsFor", {
+                                  name: user.name ?? user.email,
+                                })}
                               />
                             }
                           >
@@ -531,7 +532,7 @@ function UserManagementInner({
                             <DropdownMenuGroup>
                               <DropdownMenuItem onClick={() => openEdit(user)}>
                                 <PencilIcon />
-                                Edit
+                                {t("edit")}
                               </DropdownMenuItem>
                               <Tooltip>
                                 <TooltipTrigger
@@ -541,19 +542,19 @@ function UserManagementInner({
                                       disabled={isSelf(user.id)}
                                       title={
                                         isSelf(user.id)
-                                          ? "You cannot delete your own account."
+                                          ? t("cannotDeleteSelf")
                                           : undefined
                                       }
                                       onClick={() => setToDelete(user)}
                                     >
                                       <Trash2Icon />
-                                      Delete
+                                      {t("delete")}
                                     </DropdownMenuItem>
                                   }
                                 />
                                 {isSelf(user.id) && (
                                   <TooltipContent>
-                                    You cannot delete your own account.
+                                    {t("cannotDeleteSelf")}
                                   </TooltipContent>
                                 )}
                               </Tooltip>
@@ -642,14 +643,11 @@ function UserManagementInner({
             <AlertDialogMedia className="bg-destructive/10 text-destructive">
               <Trash2Icon />
             </AlertDialogMedia>
-            <AlertDialogTitle>Delete user?</AlertDialogTitle>
+            <AlertDialogTitle>{t("deleteUserTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently remove{" "}
-              <span className="text-foreground font-medium">
-                {toDelete?.name ?? toDelete?.email}
-              </span>{" "}
-              from your workspace, along with their sessions and linked
-              accounts. This action cannot be undone.
+              {t("deleteUserDescription", {
+                name: toDelete?.name ?? toDelete?.email ?? "",
+              })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           {deleteError && (
@@ -659,14 +657,16 @@ function UserManagementInner({
             </Alert>
           )}
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleting}>
+              {t("cancel")}
+            </AlertDialogCancel>
             <AlertDialogAction
               variant="destructive"
               className="bg-destructive hover:bg-destructive/90 text-white"
               disabled={deleting}
               onClick={() => void handleDelete()}
             >
-              {deleting ? "Deleting..." : "Delete"}
+              {deleting ? t("deleting") : t("delete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
