@@ -8,6 +8,16 @@
 
 **Input**: User description: "I want to simple boilerplate with lots of features like command palette, multi languages, gdpr compliance etc.. all to be production ready."
 
+## Clarifications
+
+### Session 2026-08-19
+
+- Q: Which languages should the boilerplate ship with in v1, and how should the default be chosen for visitors with no saved preference? A: English + French ship in v1; visitors without a saved preference get browser-locale detection with an English fallback.
+- Q: How complete should the GDPR compliance suite be in v1 - mechanisms only, or also operational compliance documents? A: Mechanisms + generic compliance document templates (records of processing, breach response, DPA checklist).
+- Q: Should the production-ready boilerplate include container/deployment artifacts or documentation only? A: Dockerfile + deployment guides (Docker, Netlify, Vercel).
+- Q: How granular should the cookie consent preferences be? A: Two choices only - accept all or essential only, no per-category dialog.
+- Q: How should the minimum-age requirement be handled at signup? A: A simple "I am at least 13 years old" checkbox at signup (no date-of-birth collection).
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Accounts, Roles, and Admin Dashboard Out of the Box (Priority: P1)
@@ -63,7 +73,7 @@ A visitor can read the entire app in their language. A language switcher is avai
 
 ### User Story 4 - GDPR / CCPA Compliance Suite (Priority: P2)
 
-The app provides everything a small SaaS needs to be privacy-compliant: a cookie consent banner with preferences, privacy policy and terms pages, self-service data export, self-service account deletion, and documented data-handling practices.
+The app provides everything a small SaaS needs to be privacy-compliant: a cookie consent banner with preferences, privacy policy and terms pages, self-service data export, self-service account deletion, documented data-handling practices, and generic compliance document templates (records of processing, breach-response plan, DPA/sub-processor checklist) the consumer fills in with their own details.
 
 **Why this priority**: Compliance is a hard requirement for shipping to production in the EU/California; the mechanisms are already partially present and need to be completed and documented.
 
@@ -71,7 +81,7 @@ The app provides everything a small SaaS needs to be privacy-compliant: a cookie
 
 **Acceptance Scenarios**:
 
-1. **Given** a first-time visitor, **When** they load the site, **Then** a cookie consent banner appears and their choice is stored and honored (non-essential cookies only load after consent).
+1. **Given** a first-time visitor, **When** they load the site, **Then** a cookie consent banner appears with exactly two choices (accept all / essential only), and their choice is stored and honored (non-essential cookies only load after consent).
 2. **Given** a signed-in user, **When** they request a data export, **Then** they receive a readable file containing their profile, sessions, and connected accounts with credentials redacted.
 3. **Given** a signed-in user, **When** they delete their account, **Then** the account, sessions, and accounts are removed and they are signed out.
 4. **Given** any visitor, **When** they open the footer, **Then** privacy policy, terms of service, and cookie settings are reachable.
@@ -93,6 +103,7 @@ The boilerplate ships with the operational details a real product needs: securit
 2. **Given** an admin performs an action in the dashboard, **When** the action completes, **Then** it is recorded in an audit log with who, what, and when.
 3. **Given** expired sessions exist, **When** the retention job runs, **Then** they are removed without logging out active sessions.
 4. **Given** a developer runs the automated checks, **When** a critical flow (sign-up, sign-in, admin guard) regresses, **Then** the failure is caught by a test.
+5. **Given** a developer wants to deploy the app, **When** they follow the Docker, Netlify, or Vercel guide, **Then** the app runs with the documented env vars and secrets.
 
 ---
 
@@ -121,20 +132,24 @@ The boilerplate ships with the operational details a real product needs: securit
 - **FR-008**: The command palette MUST support type-ahead search that matches label prefixes first, then contains, and MUST support multi-character refinement.
 - **FR-009**: The command palette MUST be fully operable with the keyboard (arrow keys, Enter, Escape) and MUST hide signed-in-only actions for guests.
 - **FR-010**: The app MUST support multiple languages with a runtime language switcher for signed-in users.
-- **FR-011**: The chosen language MUST persist across visits, and the default MUST be English.
+- **FR-011**: The chosen language MUST persist across visits; visitors without a saved preference MUST be served their browser locale when supported, falling back to English otherwise.
 - **FR-012**: Missing translations MUST fall back to the default language instead of showing raw keys.
 - **FR-013**: Adding a new language MUST NOT require application code changes.
+- **FR-025**: The v1 release MUST ship English and French translations covering all user-facing strings.
 - **FR-014**: A cookie consent banner MUST appear for first-time visitors and MUST store the user's choice.
-- **FR-015**: Non-essential cookies/storage MUST be gated on consent.
-- **FR-016**: Privacy policy and terms of service pages MUST be present and reachable from the footer.
+- **FR-015**: Consent MUST offer exactly two choices - accept all or essential only - with no per-category dialog; non-essential cookies/storage MUST be gated on the choice.
+- **FR-016**: Privacy policy and terms of service pages MUST be present and reachable from the footer, and MUST state the minimum age for the service.
 - **FR-017**: Signed-in users MUST be able to export their personal data as a downloadable file with credentials redacted.
 - **FR-018**: Signed-in users MUST be able to delete their account, which cascades to sessions and connected accounts.
 - **FR-019**: Deleting an account MUST require confirmation (password for password accounts, an explicit confirm step otherwise).
+- **FR-028**: Signup MUST include a minimum-age confirmation checkbox ("I am at least 13 years old") and MUST block registration until it is checked; no date-of-birth data is collected.
 - **FR-020**: Security-relevant events (password change, 2FA enable/disable, account deletion) MUST trigger a notification email to the account owner.
 - **FR-021**: Admin actions in the dashboard MUST be recorded in an audit log.
 - **FR-022**: Expired sessions MUST be purged by a scheduled retention job without affecting active sessions.
+- **FR-026**: The boilerplate MUST ship generic compliance document templates (records of processing, breach-response plan, DPA/sub-processor checklist) that the consumer fills in with their own details.
 - **FR-023**: Critical user flows MUST be covered by automated tests that run in CI.
 - **FR-024**: The README MUST document setup, deployment, env vars, the feature roadmap, and how to toggle features on/off.
+- **FR-027**: The boilerplate MUST ship a Dockerfile and deployment guides covering Docker, Netlify, and Vercel.
 
 ### Key Entities
 
@@ -161,7 +176,7 @@ The boilerplate ships with the operational details a real product needs: securit
 ## Assumptions
 
 - The boilerplate stays generic and brand-agnostic (per the project constitution): all branding lives in one config file, and legal pages remain templates the consumer fills in.
-- English is the default language; a second language ships as a demonstration, and the mechanism supports more without code changes.
+- English and French ship in v1 (English is the fallback default); more languages can be added without code changes.
 - "Multi-language" covers the app's own interface strings, not user-generated content.
 - Cookie consent covers analytics/tracking cookies; the better-auth session cookie and technical cookies are exempt as strictly necessary.
 - Email delivery requires a provider key; without one, dev environments log links instead of sending (production must have a provider configured).
