@@ -18,9 +18,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-export const metadata: Metadata = {
-  title: "Cookie Policy",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("legalCookies");
+
+  return {
+    title: t("title"),
+  };
+}
 
 export default async function CookiePolicyPage() {
   const t = await getTranslations("legalCookies");

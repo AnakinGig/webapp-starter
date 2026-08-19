@@ -16,7 +16,9 @@
     "user": "Utilisateur",
     "continueWithProvider": "Continuer avec {provider}",
     "orContinueWithEmail": "ou continuer avec votre e-mail",
-    "orSignUpWithEmail": "ou créer un compte avec votre e-mail"
+    "orSignUpWithEmail": "ou créer un compte avec votre e-mail",
+    "pagination": "Pagination",
+    "morePages": "Plus de pages"
   },
   "header": {
     "signIn": "Se connecter",

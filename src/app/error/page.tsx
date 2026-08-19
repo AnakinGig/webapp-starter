@@ -12,9 +12,13 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
-export const metadata: Metadata = {
-  title: "Something went wrong",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("errorPage");
+
+  return {
+    title: t("somethingWentWrong"),
+  };
+}
 
 /**
  * OAuth failure landing page. better-auth redirects failed callbacks (email

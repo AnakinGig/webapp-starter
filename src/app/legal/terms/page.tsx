@@ -11,9 +11,13 @@ import {
   LegalSection,
 } from "@/components/legal/legal-document";
 
-export const metadata: Metadata = {
-  title: "Terms of Service",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("legalTerms");
+
+  return {
+    title: t("title"),
+  };
+}
 
 export default async function TermsOfServicePage() {
   const t = await getTranslations("legalTerms");
