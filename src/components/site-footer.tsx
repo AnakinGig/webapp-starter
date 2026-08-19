@@ -38,6 +38,34 @@ function FooterColumn({
 export async function SiteFooter() {
   const t = await getTranslations("footer");
 
+  const columns: {
+    title: string;
+    links: { label: string; href: string }[];
+  }[] = [
+    {
+      title: t("product"),
+      links: [
+        { label: t("links.product.overview"), href: "/" },
+        { label: t("links.product.dashboard"), href: "/dashboard" },
+      ],
+    },
+    {
+      title: t("account"),
+      links: [
+        { label: t("links.account.signIn"), href: "/login" },
+        { label: t("links.account.createAccount"), href: "/register" },
+      ],
+    },
+    {
+      title: t("legal"),
+      links: [
+        { label: t("links.legal.terms"), href: "/legal/terms" },
+        { label: t("links.legal.privacy"), href: "/legal/privacy" },
+        { label: t("links.legal.cookies"), href: "/legal/cookies" },
+      ],
+    },
+  ];
+
   return (
     <footer className="border-border bg-card border-t">
       <div className="mx-auto w-full max-w-6xl px-4 py-12 sm:px-6">
@@ -50,18 +78,16 @@ export async function SiteFooter() {
               </span>
             </Link>
             <p className="text-muted-foreground max-w-xs text-sm leading-relaxed">
-              {siteConfig.description}
+              {t("description")}
             </p>
           </div>
-          <FooterColumn
-            title={t("product")}
-            links={siteConfig.footerNav.product}
-          />
-          <FooterColumn
-            title={t("account")}
-            links={siteConfig.footerNav.account}
-          />
-          <FooterColumn title={t("legal")} links={siteConfig.footerNav.legal} />
+          {columns.map((column) => (
+            <FooterColumn
+              key={column.title}
+              title={column.title}
+              links={column.links}
+            />
+          ))}
         </div>
 
         <div className="border-border text-muted-foreground mt-10 flex flex-col items-start justify-between gap-3 border-t pt-6 text-xs sm:flex-row sm:items-center">

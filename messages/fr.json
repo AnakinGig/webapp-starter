@@ -31,22 +31,38 @@
     "account": "Compte",
     "legal": "Mentions légales",
     "support": "Assistance",
-    "rightsReserved": "© {year} {name}. Tous droits réservés."
+    "rightsReserved": "© {year} {name}. Tous droits réservés.",
+    "description": "Un kit UI soigné avec une page d'accueil, des écrans d'authentification et un shell de tableau de bord.",
+    "links": {
+      "product": {
+        "overview": "Aperçu",
+        "dashboard": "Tableau de bord"
+      },
+      "account": {
+        "signIn": "Se connecter",
+        "createAccount": "Créer un compte"
+      },
+      "legal": {
+        "terms": "Conditions d'utilisation",
+        "privacy": "Politique de confidentialité",
+        "cookies": "Politique de cookies"
+      }
+    }
   },
   "landing": {
     "badge": "v1.0 - Kit de démarrage full-stack",
     "heroTitle": "Le boilerplate pour lancer votre prochaine app plus vite.",
-    "heroDescription": "{name} vous fournit la couche UI d'un produit moderne : page d'accueil, écrans d'authentification et un tableau de bord que vous pouvez intégrer à une autre app T3 et brancher sur votre propre backend.",
+    "heroDescription": "{name} vous fournit la couche UI d'un produit moderne : page d'accueil, écrans d'authentification et un shell de tableau de bord que vous pouvez intégrer à une autre app T3 et brancher sur votre propre backend.",
     "whatsIncluded": "Ce qui est inclus",
     "featuresTitle": "Tout ce qu'il vous faut, rien de superflu.",
     "features": {
       "authTitle": "Écrans d'authentification",
-      "authDescription": "Vues de connexion et d'inscription avec une coque cohérente, une mise en page responsive et des formulaires soignés.",
+      "authDescription": "Vues de connexion et d'inscription avec un shell cohérent, une mise en page responsive et des formulaires soignés.",
       "dashboardTitle": "Interface du tableau de bord",
       "dashboardDescription": "Un espace de travail complet en tableaux pour la gestion des utilisateurs, prêt à être branché sur votre propre couche de données.",
       "componentsTitle": "Composants réutilisables",
       "componentsDescription": "En-tête, pied de page, cartes, boîtes de dialogue et primitives de formulaire formant une UI produit cohérente.",
-      "themeTitle": "Coque compatible thèmes",
+      "themeTitle": "Shell compatible thèmes",
       "themeDescription": "Changement de thème, espacement responsive et un système visuel neutre prêt pour une app T3."
     },
     "ctaTitle": "Prêt à construire ?",
@@ -125,6 +141,10 @@
       "useAuthCode": "Utiliser un code d'authentification à la place",
       "unverifiedWarning": "Vous êtes connecté, mais {email} n'est pas encore vérifié. Vérifiez votre boîte de réception pour le lien envoyé à l'inscription, ou renvoyez-le depuis Paramètres → Sécurité."
     }
+  },
+  "brand": {
+    "tagline": "Kit de démarrage UI",
+    "description": "Un kit UI soigné avec une page d'accueil, des écrans d'authentification et un shell de tableau de bord."
   },
   "settings": {
     "title": "Paramètres",

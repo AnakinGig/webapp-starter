@@ -18,6 +18,7 @@ export async function AuthShell({
   footer: ReactNode;
 }) {
   const t = await getTranslations("common");
+  const tb = await getTranslations("brand");
 
   return (
     <div className="grid min-h-svh lg:grid-cols-2">
@@ -62,10 +63,10 @@ export async function AuthShell({
           </div>
           <blockquote className="max-w-md">
             <p className="text-xl leading-relaxed text-balance">
-              {siteConfig.tagline}
+              {tb("tagline")}
             </p>
             <footer className="text-muted-foreground mt-4 font-mono text-xs">
-              {siteConfig.description}
+              {tb("description")}
             </footer>
           </blockquote>
           <div className="text-muted-foreground flex flex-wrap gap-2 font-mono text-xs">

@@ -31,7 +31,23 @@
     "account": "Account",
     "legal": "Legal",
     "support": "Support",
-    "rightsReserved": "© {year} {name}. All rights reserved."
+    "rightsReserved": "© {year} {name}. All rights reserved.",
+    "description": "A polished UI starter with a landing page, auth screens, and a dashboard shell.",
+    "links": {
+      "product": {
+        "overview": "Overview",
+        "dashboard": "Dashboard"
+      },
+      "account": {
+        "signIn": "Sign in",
+        "createAccount": "Create account"
+      },
+      "legal": {
+        "terms": "Terms of Service",
+        "privacy": "Privacy Policy",
+        "cookies": "Cookie Policy"
+      }
+    }
   },
   "landing": {
     "badge": "v1.0 - Full-stack starter kit",
@@ -125,6 +141,10 @@
       "useAuthCode": "Use an authenticator code instead",
       "unverifiedWarning": "You're signed in, but {email} isn't verified yet. Check your inbox for the link we sent when you signed up, or resend it from Settings → Security."
     }
+  },
+  "brand": {
+    "tagline": "UI Starter Kit",
+    "description": "A polished UI starter with a landing page, auth screens, and a dashboard shell."
   },
   "settings": {
     "title": "Settings",
