@@ -479,13 +479,13 @@ export function CommandPaletteTrigger() {
         size="sm"
         onClick={openPalette}
         aria-label={isMac ? t("openPaletteMac") : t("openPaletteOther")}
-        className="text-muted-foreground hidden w-40 justify-between gap-2 sm:flex"
+        className="text-muted-foreground hidden min-w-40 justify-between gap-2 sm:flex"
       >
-        <span className="flex items-center gap-2">
+        <span className="flex shrink-0 items-center gap-2">
           <Search className="size-3.5" />
           {t("search")}
         </span>
-        <kbd className="bg-muted text-muted-foreground pointer-events-none rounded border px-1.5 py-0.5 font-mono text-[10px]">
+        <kbd className="bg-muted text-muted-foreground pointer-events-none shrink-0 rounded border px-1.5 py-0.5 font-mono text-[10px]">
           {isMac ? "⌘K" : "Ctrl K"}
         </kbd>
       </Button>
