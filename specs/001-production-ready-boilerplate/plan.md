@@ -42,7 +42,10 @@ The core promise (fresh clone to working dashboard) is already delivered; this f
 - Principle IV (Security-First): PASS - audit log, security notifications, rate limits, age gate, and consent gating are all security/privacy hardening.
 - Principle V (UX & UI Consistency): PASS - consent banner, language switcher, and age-gate checkbox use existing shadcn/ui components and inline-error patterns.
 
-Re-check after design: confirm no new required env var breaks the documented quick start, and that disabling i18n still yields a fully functional single-language app.
+Post-design re-check (Phase 1):
+- No new REQUIRED env var: `RETENTION_DORMANT_DAYS` is opt-in (unset = disabled); i18n needs no env vars (locale cookie + message files). Quick start unchanged.
+- Disabling i18n (removing the switcher/locale cookie) yields a fully functional English-only app - the resolver defaults to `en`.
+- All new config (retention env var, locales, message files, compliance docs) is additive and opt-in; no violation introduced. GATE PASSES.
 
 ## Project Structure
 
@@ -52,9 +55,14 @@ Re-check after design: confirm no new required env var breaks the documented qui
 specs/001-production-ready-boilerplate/
 ├── plan.md              # This file
 ├── spec.md              # Feature specification (clarified)
+├── research.md          # Phase 0: technical decisions (i18n, testing, cron, deploy, notifications, audit, consent, compliance docs)
+├── data-model.md        # Phase 1: entities (User extensions, Audit Log table, retention)
+├── quickstart.md        # Phase 1: validation scenarios (fresh clone -> dashboard, palette, i18n, GDPR, hardening)
+├── contracts/
+│   └── feature-toggles.md  # Phase 1: env-var/cookie/locale/consent/audit contracts
 ├── checklists/
 │   ├── requirements.md  # Built-in spec-quality checklist
-│   └── [domain].md      # Custom checklists (e.g. i18n, gdpr)
+│   └── production.md    # Custom production requirements-quality checklist (32 items)
 └── tasks.md             # Phase 2 output ($speckit-tasks command - NOT created by $speckit-plan)
 ```
 
